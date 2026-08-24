@@ -909,6 +909,9 @@ It also does not claim to interrupt a tool that cannot be interrupted, and it do
 
 ## Documentation
 
+Everything below, plus the recipes, is published at
+**[obaid.github.io/laravel-agent-harness](https://obaid.github.io/laravel-agent-harness/)**.
+
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — runtime boundaries, state machines, storage, events, reliability, security
 - [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) — local setup, repository structure, testing, implementation order, contribution rules
 - [`docs/RECIPES.md`](docs/RECIPES.md) — end-to-end examples: approval inboxes, live progress UIs, multi-tenant scoping, cost caps
