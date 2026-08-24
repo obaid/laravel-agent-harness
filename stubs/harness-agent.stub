@@ -1,0 +1,45 @@
+<?php
+
+namespace {{ namespace }};
+
+use AgentHarness\Laravel\Facades\Harness;
+use Laravel\Ai\Concerns\RemembersConversations;
+use Laravel\Ai\Contracts\Agent;
+use Laravel\Ai\Contracts\HasTools;
+use Laravel\Ai\Contracts\RemembersConversations as RemembersConversationsContract;
+use Laravel\Ai\Contracts\Tool;
+use Laravel\Ai\Promptable;
+use Stringable;
+
+class {{ class }} implements Agent, HasTools, RemembersConversationsContract
+{
+    use Promptable;
+
+    // Laravel AI persists this agent's conversation, which is what lets a
+    // harness session continue across requests, workers and deployments.
+    use RemembersConversations;
+
+    /**
+     * Get the instructions that the agent should follow.
+     */
+    public function instructions(): Stringable|string
+    {
+        return 'You are a helpful assistant.';
+    }
+
+    /**
+     * Get the tools available to the agent.
+     *
+     * Passing the list through Harness::policy() applies the session's
+     * permission mode: tools it denies are withheld, and tools that need
+     * sign-off pause the run as a durable approval.
+     *
+     * @return Tool[]
+     */
+    public function tools(): iterable
+    {
+        return Harness::policy([
+            //
+        ]);
+    }
+}

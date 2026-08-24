@@ -1,0 +1,49 @@
+<?php
+
+declare(strict_types=1);
+
+namespace AgentHarness\Laravel\Console;
+
+use AgentHarness\Laravel\Models\Session;
+use Illuminate\Console\Command;
+
+class SessionsCommand extends Command
+{
+    protected $signature = 'harness:sessions
+        {--status=* : Only show sessions with these statuses}
+        {--agent= : Only show sessions for this agent class}
+        {--limit=25 : How many sessions to show}';
+
+    protected $description = 'List harness sessions';
+
+    public function handle(): int
+    {
+        $sessions = Session::query()
+            ->when($this->option('status'), fn ($query, array $statuses) => $query->whereIn('status', $statuses))
+            ->when($this->option('agent'), fn ($query, string $agent) => $query->where('agent_class', 'like', "%{$agent}%"))
+            ->latest('created_at')
+            ->limit((int) $this->option('limit'))
+            ->get();
+
+        if ($sessions->isEmpty()) {
+            $this->components->info('No harness sessions found.');
+
+            return self::SUCCESS;
+        }
+
+        $this->table(
+            ['ID', 'Name', 'Agent', 'Status', 'Active run', 'Runs', 'Created'],
+            $sessions->map(fn (Session $session): array => [
+                $session->id,
+                \Illuminate\Support\Str::limit($session->name ?? '—', 28),
+                class_basename($session->agent_class ?? $session->runtime_name ?? '—'),
+                $session->status->value,
+                $session->active_run_id ?? '—',
+                $session->runs()->count(),
+                $session->created_at?->diffForHumans() ?? '—',
+            ])->all(),
+        );
+
+        return self::SUCCESS;
+    }
+}
