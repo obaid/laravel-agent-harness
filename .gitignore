@@ -9,3 +9,9 @@ composer.lock
 Thumbs.db
 .idea
 .vscode
+
+# Generated when the docs site is built.
+/docs/pages
+/docs/_site
+/docs/.jekyll-cache
+/docs/Gemfile.lock

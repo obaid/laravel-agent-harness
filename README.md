@@ -61,6 +61,91 @@ This is not another model abstraction or agent framework. It is the missing prod
 
 ---
 
+
+## Where it sits
+
+The harness wraps Laravel AI rather than replacing it. Your agents, tools, and
+provider configuration stay exactly as they are — the harness owns the lifecycle
+around them.
+
+```mermaid
+flowchart LR
+    Controller["Your controller"]
+    Coordinator["RunCoordinator"]
+    Worker["Queue worker"]
+    Record[("sessions · runs · events<br/>approvals · checkpoints · ledger")]
+    Agent["Your agent<br/>instructions + tools"]
+    Conversation[("conversations")]
+    Provider["Model provider"]
+    Frontend["Frontend"]
+    Approver["Approver"]
+
+    Controller -->|queue a run| Coordinator
+    Coordinator -->|after commit| Worker
+    Worker -->|under a lease| Coordinator
+    Coordinator --> Record
+    Coordinator -->|run a turn| Agent
+    Agent --> Conversation
+    Agent --> Provider
+    Record -->|replay, then live| Frontend
+    Record -->|outlives the worker| Approver
+    Approver -->|resumes the run| Coordinator
+
+    classDef yours fill:#4f46e5,stroke:#3730a3,color:#ffffff
+    classDef harness fill:#0f766e,stroke:#115e59,color:#ffffff
+    classDef ai fill:#b45309,stroke:#92400e,color:#ffffff
+
+    class Controller,Frontend,Approver yours
+    class Coordinator,Worker,Record harness
+    class Agent,Conversation,Provider ai
+```
+
+<sub>**Indigo** is yours · **teal** is the harness · **amber** is Laravel AI.</sub>
+
+Read it as three responsibilities:
+
+- **Laravel AI** talks to the model, runs the tool loop, and remembers the
+  conversation. Untouched.
+- **The harness** decides when a turn starts, what is recorded, who may approve
+  what, when to stop, and how to pick the work back up. Every state change goes
+  through one coordinator, so the transaction rules hold in one place.
+- **Your application** starts work, renders progress, and decides who approves.
+
+The dashed arrows are the parts that make it durable: the queue job is
+dispatched only after the run's state commits, events are persisted before they
+are broadcast, and an approval resolved in a completely separate process is what
+resumes the run.
+
+### What one turn actually does
+
+```
+   $session->prompt(…)
+        │
+        ├─ createRun ─────────────── run.created        ← one active run per session, enforced by a row lock
+        ├─ acquire session lease ─────────────────────  ← one worker, or the job exits
+        ├─ restore checkpoint ────────────────────────  ← the conversation the last turn left
+        ├─ transition to running ── run.started
+        │
+        │   ┌─ driver: Laravel AI stream ──────────────┐
+        │   │  step.started                            │
+        │   │  text.delta × n                          │
+        │   │  tool.call.requested   ← ledger checks   │  budgets checked at each
+        │   │  tool.call.completed     idempotency     │  boundary; cancellation
+        │   │  step.completed                          │  observed before any new step
+        │   └──────────────────────────────────────────┘
+        │
+        ├─ store checkpoint ──────── checkpoint.created
+        ├─ usage.updated
+        └─ commit terminal state ── run.completed       ← state, result and event commit together;
+                                                          the active-run slot clears in the same write
+```
+
+If the agent hits an approvable tool, the middle of that diagram ends at
+`run.awaiting_approval` instead, the worker exits, and the whole sequence
+resumes from the checkpoint whenever the decision arrives.
+
+---
+
 ## Requirements
 
 - PHP 8.3+

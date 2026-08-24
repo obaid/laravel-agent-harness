@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+#
+# Prepare the docs directory for a Jekyll build.
+#
+# The markdown sources carry no front matter, so they render cleanly on GitHub
+# and in any editor. Jekyll needs front matter, so it is prepended here into
+# generated copies under pages/ instead. CI and a local preview both run this,
+# so the two cannot drift.
+
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+rm -rf pages
+mkdir -p pages
+
+stage() {
+    local source="$1" slug="$2" title="$3" order="$4"
+
+    {
+        printf -- '---\nlayout: default\ntitle: %s\nnav_order: %s\npermalink: /%s/\n---\n\n' \
+            "$title" "$order" "$slug"
+
+        # The bodies contain Blade and other {{ ... }} syntax that Liquid would
+        # otherwise try to evaluate and swallow. None of these documents use
+        # Liquid deliberately, so the whole body is passed through untouched.
+        printf -- '{%% raw %%}\n'
+        cat "$source"
+        printf -- '\n{%% endraw %%}\n'
+    } > "pages/${slug}.md"
+}
+
+# The README is the guide. Copying it in keeps one source of truth rather than
+# a second copy that drifts.
+stage ../README.md guide 'Guide' 1
+
+# Its links point at docs/ for GitHub readers; on the site the pages are
+# siblings under /.
+sed -i.bak \
+    -e 's|](docs/ARCHITECTURE.md)|](/laravel-agent-harness/architecture/)|g' \
+    -e 's|](docs/DEVELOPMENT.md)|](/laravel-agent-harness/development/)|g' \
+    -e 's|](docs/RECIPES.md)|](/laravel-agent-harness/recipes/)|g' \
+    pages/guide.md && rm -f pages/guide.md.bak
+
+stage RECIPES.md recipes 'Recipes' 2
+stage ARCHITECTURE.md architecture 'Architecture' 3
+stage DEVELOPMENT.md development 'Development' 4
+
+echo "Staged: $(ls pages)"

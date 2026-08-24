@@ -1,0 +1,57 @@
+title: Laravel Agent Harness
+description: Durable, observable agent runtimes for Laravel, powered by the official Laravel AI SDK.
+
+# The gem rather than remote_theme: one less network fetch at build time,
+# and no OpenSSL/git dependency in the build image.
+theme: just-the-docs
+
+url: https://obaid.github.io
+baseurl: /laravel-agent-harness
+
+# Rendered as diagrams rather than code blocks.
+mermaid:
+  version: "10.9.1"
+
+plugins:
+  # Rewrites the .md links the source files use so they resolve on the site
+  # as well as on GitHub. The markdown stays plain either way.
+  - jekyll-relative-links
+
+relative_links:
+  enabled: true
+  collections: false
+
+color_scheme: dark
+search_enabled: true
+
+aux_links:
+  GitHub: https://github.com/obaid/laravel-agent-harness
+  Packagist: https://packagist.org/packages/obaid/laravel-agent-harness
+
+aux_links_new_tab: true
+
+back_to_top: true
+back_to_top_text: Back to top
+
+footer_content: >-
+  Released under the MIT licence.
+
+# Front matter is prepended into the staged copies by bin/stage rather than
+# living in the markdown, so the same sources render cleanly on GitHub.
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - vendor
+  - adr
+  - bin
+  # The pristine sources. bin/stage produces the copies under pages/ that
+  # Jekyll actually renders, so these would otherwise be published twice.
+  - RECIPES.md
+  - ARCHITECTURE.md
+  - DEVELOPMENT.md

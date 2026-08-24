@@ -7,9 +7,7 @@ namespace AgentHarness\Laravel\Tests;
 use AgentHarness\Laravel\AgentHarnessServiceProvider;
 use AgentHarness\Laravel\Runtime\RunContext;
 use AgentHarness\Laravel\Tests\Fixtures\User;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Schema;
 use Laravel\Ai\AiServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 
@@ -93,15 +91,12 @@ abstract class TestCase extends Orchestra
 
     protected function defineDatabaseMigrations(): void
     {
+        $this->loadMigrationsFrom(__DIR__.'/Fixtures/migrations');
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
-        $this->loadMigrationsFrom(__DIR__.'/../vendor/laravel/ai/database/migrations');
 
-        Schema::create('users', function (Blueprint $table): void {
-            $table->id();
-            $table->string('name');
-            $table->string('email')->unique();
-            $table->timestamps();
-        });
+        // Laravel AI's conversation tables. The harness stores session context
+        // there, so the suite exercises the real thing rather than a stand-in.
+        $this->loadMigrationsFrom(__DIR__.'/../vendor/laravel/ai/database/migrations');
     }
 
     /**

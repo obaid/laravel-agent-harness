@@ -8,8 +8,10 @@ use AgentHarness\Laravel\Facades\Harness;
 use AgentHarness\Laravel\Models\Approval;
 use AgentHarness\Laravel\Tests\Fixtures\Agents\ResearchAgent;
 use AgentHarness\Laravel\Tests\Fixtures\Agents\StatelessAgent;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Collection;
 use Laravel\Ai\Approvals\PendingApproval;
+use Laravel\Ai\Contracts\ConversationStore;
 use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Responses\AgentResponse;
 
@@ -225,17 +227,49 @@ it('explains how to install the Laravel AI migrations when they are missing', fu
 
     $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
 
-    // Simulate an application that installed the harness but never published
-    // Laravel AI's own migrations.
-    Schema::drop('agent_conversation_messages');
-    Schema::drop('agent_conversations');
+    // Stand in for an application that installed the harness but never
+    // published Laravel AI's own migrations. Raised through the store rather
+    // than by dropping the tables, so the surrounding test transaction stays
+    // usable and the assertion is about the message, not the schema.
+    $this->app->bind(ConversationStore::class, fn (): ConversationStore => new class implements ConversationStore
+    {
+        public function latestConversationId(string $participantType, string|int $participantId): ?string
+        {
+            return null;
+        }
 
-    expect(fn () => $session->prompt('Research.'))->not->toThrow(Throwable::class);
+        public function storeConversation(?string $participantType, string|int|null $participantId, string $title): string
+        {
+            throw new QueryException('testing', 'insert into "agent_conversations" ...', [], new PDOException(
+                'SQLSTATE[42P01]: Undefined table: 7 ERROR: relation "agent_conversations" does not exist'
+            ));
+        }
 
-    $run = $session->refresh()->runs()->first();
+        public function storeUserMessage(string $conversationId, ?string $participantType, string|int|null $participantId, $prompt): string
+        {
+            return '';
+        }
 
-    expect($run->status)->toBe(RunStatus::Failed)
-        ->and($run->failure_message)
+        public function storeAssistantMessage(string $conversationId, ?string $participantType, string|int|null $participantId, $prompt, $response): ?string
+        {
+            return null;
+        }
+
+        public function getLatestConversationMessages(string $conversationId, int $limit): Collection
+        {
+            return new Collection;
+        }
+
+        public function storeApprovalResults(string $conversationId, ?string $participantType, string|int|null $participantId, array $toolResults): void
+        {
+            //
+        }
+    });
+
+    $result = $session->prompt('Research.');
+
+    expect($result->isFailed())->toBeTrue()
+        ->and($result->run->failure_message)
         ->toContain('Laravel AI conversation tables are missing')
         ->toContain('vendor:publish');
 });

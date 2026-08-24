@@ -1,0 +1,18 @@
+// The content column is narrower than a systems diagram wants to be. Let
+// diagrams use the full width available and scroll rather than being scaled
+// down to something unreadable.
+.mermaid {
+  overflow-x: auto;
+  margin: 1.5rem 0;
+
+  svg {
+    min-width: 640px;
+    max-width: none;
+    height: auto;
+  }
+}
+
+// The ASCII sequence diagrams in the guide rely on alignment.
+pre.highlight {
+  line-height: 1.45;
+}
