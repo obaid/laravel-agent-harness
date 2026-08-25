@@ -5,11 +5,11 @@
 [![Downloads](https://img.shields.io/packagist/dt/obaid/laravel-clutch.svg?style=flat-square)](https://packagist.org/packages/obaid/laravel-clutch)
 [![License](https://img.shields.io/packagist/l/obaid/laravel-clutch.svg?style=flat-square)](LICENSE.md)
 
-Durable, observable agent runtimes for Laravel, built on the official [Laravel AI SDK](https://laravel.com/docs/ai).
+An agent harness for Laravel, built on the official [Laravel AI SDK](https://laravel.com/docs/ai).
 
 [Documentation](https://obaid.github.io/laravel-clutch/) · [Recipes](https://obaid.github.io/laravel-clutch/recipes/)
 
-Laravel AI gives you the agent. This package gives you everything around it: sessions that outlive a request, runs you can queue and resume, an ordered event history you can replay, human approvals that survive a deploy, budgets, cancellation, and artifacts.
+Laravel AI gives you the agent. Clutch is the harness around it: sessions that outlive a request, runs you can queue and resume, an ordered event history you can replay, human approvals that survive a deploy, budgets, cancellation, and artifacts.
 
 ```php
 $session = Clutch::agent(ResearchAgent::class)->for($user)->create();
@@ -43,24 +43,24 @@ Laravel AI covers a lot of ground already: agents, conversations, tools, streami
 
 So every application ends up writing the same layer. Session and run tables. Queue orchestration and execution locks. Status transitions and audit history. Stream persistence and reconnect logic. Approval endpoints and continuation jobs. Checkpoints, crash recovery, tool idempotency, cancellation, budgets, usage accounting, artifact storage, tenant isolation, redaction, and the commands to inspect all of it.
 
-This package is that layer, written once.
+Clutch is that layer, written once.
 
 | Question | Answered by |
 | --- | --- |
 | Which model should answer this prompt? | Laravel AI |
 | Which tools can the model call? | Laravel AI and your application |
 | What conversation context does the model get? | Laravel AI |
-| Who owns the run after the HTTP request ends? | This package |
-| What happens when the browser or worker disconnects? | This package |
-| Has this tool already performed its side effect? | This package |
-| How does an approval resume in another process? | This package |
-| What happened, in what order, and at what cost? | This package |
+| Who owns the run after the HTTP request ends? | Clutch |
+| What happens when the browser or worker disconnects? | Clutch |
+| Has this tool already performed its side effect? | Clutch |
+| How does an approval resume in another process? | Clutch |
+| What happened, in what order, and at what cost? | Clutch |
 
-Laravel AI runs the agent. This package keeps it running safely across requests, workers, and deploys. It is not another model abstraction or agent framework, and it is built on Laravel's own queues, events, broadcasting, storage, policies, database, container, and testing fakes.
+Laravel AI runs the agent. Clutch is the harness that keeps it running safely across requests, workers, and deploys. It is not another model abstraction or agent framework, and it is built on Laravel's own queues, events, broadcasting, storage, policies, database, container, and testing fakes.
 
 ## Where it sits
 
-The harness wraps Laravel AI instead of replacing it. Your agents, tools, and provider configuration stay exactly as they are.
+Clutch wraps Laravel AI instead of replacing it. Your agents, tools, and provider configuration stay exactly as they are.
 
 ```mermaid
 flowchart LR
@@ -131,8 +131,8 @@ If the agent hits a tool that needs approval, the middle of that sequence ends a
 * PHP 8.3 or newer
 * Laravel 12 or 13
 * `laravel/ai` 0.11.x. Laravel AI is still pre-1.0, so the constraint pins the
-  minor deliberately: a 0.12 release may move the interfaces this package builds
-  on, and it should be verified before being allowed.
+  minor deliberately: a 0.12 release may move the interfaces Clutch builds on,
+  and that should be verified before it is allowed.
 * PostgreSQL for production. SQLite is fine for tests.
 * Redis for queues, leases, and broadcasting
 
@@ -141,7 +141,7 @@ If the agent hits a tool that needs approval, the middle of that sequence ends a
 ```bash
 composer require obaid/laravel-clutch
 
-# The harness tables.
+# The Clutch tables.
 php artisan vendor:publish --provider="Clutch\Laravel\ClutchServiceProvider"
 
 # Laravel AI's conversation tables, if you have not published them already.

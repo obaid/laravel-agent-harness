@@ -5,7 +5,7 @@ nav_order: 0
 permalink: /
 ---
 
-Laravel AI gives you the agent. This package gives you everything around it: sessions that outlive a request, runs you can queue and resume, an ordered event history you can replay, human approvals that survive a deploy, budgets, cancellation, and artifacts.
+Laravel AI gives you the agent. Clutch is the harness around it: sessions that outlive a request, runs you can queue and resume, an ordered event history you can replay, human approvals that survive a deploy, budgets, cancellation, and artifacts.
 
 ## The problem
 
@@ -17,7 +17,7 @@ $response = (new ResearchAgent)->prompt('Research our competitors.');
 
 That is the engine. The trouble starts when the work does not fit in one request. Someone closes the browser. A deploy restarts the worker. A publishing tool succeeds, then the process dies before recording that it did. The agent pauses for approval and gets an answer the next morning, from somewhere else entirely.
 
-Laravel AI does not try to be the runtime that owns that lifecycle. This package is.
+Laravel AI does not try to be the harness that owns that lifecycle. Clutch is.
 
 ```php
 $session = Clutch::agent(ResearchAgent::class)->for($user)->create();

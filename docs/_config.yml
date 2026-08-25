@@ -1,5 +1,5 @@
 title: Laravel Clutch
-description: Durable, observable agent runtimes for Laravel, built on the official Laravel AI SDK.
+description: An agent harness for Laravel, built on the official Laravel AI SDK.
 
 # The gem rather than remote_theme: one less network fetch at build time,
 # and no OpenSSL or git dependency in the build image.
