@@ -5,7 +5,7 @@ Notable changes to `obaid/laravel-clutch`.
 This project follows [Semantic Versioning](https://semver.org). Before v1.0, a
 breaking change needs a changelog entry and an upgrade note.
 
-## v0.1.0, unreleased
+## v0.1.0 - 2026-08-24
 
 First release: a durable runtime around Laravel AI agents.
 

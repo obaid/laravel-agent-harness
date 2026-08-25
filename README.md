@@ -125,7 +125,9 @@ If the agent hits a tool that needs approval, the middle of that sequence ends a
 
 * PHP 8.3 or newer
 * Laravel 12 or 13
-* `laravel/ai` 0.11 or newer
+* `laravel/ai` 0.11.x. Laravel AI is still pre-1.0, so the constraint pins the
+  minor deliberately: a 0.12 release may move the interfaces this package builds
+  on, and it should be verified before being allowed.
 * PostgreSQL for production. SQLite is fine for tests.
 * Redis for queues, leases, and broadcasting
 
