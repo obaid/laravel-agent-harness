@@ -7,6 +7,7 @@ namespace Clutch\Laravel\Jobs;
 use Clutch\Laravel\Enums\EventType;
 use Clutch\Laravel\Enums\FailureCategory;
 use Clutch\Laravel\Enums\RunStatus;
+use Clutch\Laravel\Enums\SessionStatus;
 use Clutch\Laravel\Leases\LeaseManager;
 use Clutch\Laravel\Models\Run;
 use Clutch\Laravel\Runtime\RunCoordinator;
@@ -83,6 +84,15 @@ class ReapAbandonedRuns implements ShouldQueue
                     'failure_message' => $failure['message'],
                     'finished_at' => now(),
                 ], EventType::RunFailed, $failure, clearActiveRun: true);
+
+                // The finalizers do this for every other route to a terminal
+                // run. Without it the session stays `running` or
+                // `awaiting_approval` forever, describing a turn that no
+                // longer exists.
+                if ($run->session instanceof \Clutch\Laravel\Models\Session
+                    && ! $run->session->status->isTerminal()) {
+                    $coordinator->transitionSession($run->session, SessionStatus::Ready);
+                }
             } finally {
                 $lease->release();
             }

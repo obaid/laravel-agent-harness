@@ -80,6 +80,26 @@ class RunContext
     /**
      * Attach durable outputs to the current run.
      */
+    /**
+     * Whether the tool policy was consulted during this run.
+     *
+     * Laravel AI reads an agent's tools itself, so the harness has no seam to
+     * enforce `Clutch::policy()` from. What it can do is notice afterwards
+     * that it was never asked, and say so rather than leaving every
+     * protection quietly inert.
+     */
+    protected bool $policyApplied = false;
+
+    public function policyWasApplied(): void
+    {
+        $this->policyApplied = true;
+    }
+
+    public function sawThePolicy(): bool
+    {
+        return $this->policyApplied;
+    }
+
     public function artifacts(): ArtifactRegistrar
     {
         return $this->artifacts;

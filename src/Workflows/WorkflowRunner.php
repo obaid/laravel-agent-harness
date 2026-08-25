@@ -75,6 +75,10 @@ final class WorkflowRunner
     {
         $run = $this->answer($runId, $input);
 
+        if ($run->status->isTerminal()) {
+            return $run;
+        }
+
         return $this->coordinator->resumeAfterApproval($run);
     }
 
@@ -86,6 +90,10 @@ final class WorkflowRunner
     public function resumeNow(string $runId, array $input = []): ClutchResult
     {
         $run = $this->answer($runId, $input);
+
+        if ($run->status->isTerminal()) {
+            return ClutchResult::fromRun($run);
+        }
 
         $run = $this->coordinator->continueRun($run->id);
 
@@ -105,8 +113,17 @@ final class WorkflowRunner
         $run = Run::query()->with('session')->find($runId) ?? throw RunNotFound::withId($runId);
 
         if ($run->status !== RunStatus::AwaitingApproval) {
+            // Answering something that has already moved on is a no-op, the
+            // same way resolving an approval twice is. Two people pressing
+            // approve, or one person pressing it twice, is ordinary and must
+            // not raise.
+            if ($run->status->isTerminal()) {
+                return $run;
+            }
+
             throw new LogicException(sprintf(
-                'Run [%s] is [%s], not paused, so there is nothing to answer.',
+                'Run [%s] is [%s], so there is nothing waiting to be answered. '
+                .'A workflow can only be resumed while it is paused.',
                 $runId,
                 $run->status->value,
             ));

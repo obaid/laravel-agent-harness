@@ -53,6 +53,8 @@ class PolicyAwareTools
             return is_array($tools) ? array_values($tools) : iterator_to_array($tools, false);
         }
 
+        $context->policyWasApplied();
+
         $mode = $context->permissionMode();
         $configuration = (array) ($context->session->configuration ?? []);
 

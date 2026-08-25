@@ -5,6 +5,54 @@ Notable changes to `obaid/laravel-clutch`.
 This project follows [Semantic Versioning](https://semver.org). Before v1.0, a
 breaking change needs a changelog entry and an upgrade note.
 
+## v0.4.0 - 2026-08-25
+
+Testing that goes after the kind of bug this package actually has.
+
+Every defect found since the first release has been a seam, not a unit: a
+component that worked perfectly and was never called, a rule that five paths
+followed and a sixth did not, a happy path with no unhappy twin. Line coverage
+would have called all of them covered. So the suite now attacks those shapes
+directly, and doing that turned up two more.
+
+**Every shipped driver is now run through the driver contract.** The contract
+suite existed from the start and only the fake was ever put through it, which
+is backwards: the fake is the one driver whose behaviour is already obvious.
+Running the real two through it showed the suite itself was wrong, resuming a
+session that had never taken a turn, which no coordinator does. It now drives a
+turn first, and asserts a continuation stays inside the session it was given.
+
+**Terminal-state invariants are asserted against every route to them.** Five
+rules, checked against all five ways a run can finish. This found the second
+half of the bug fixed in v0.3.2: the reaper left the *session* in
+`awaiting_approval` describing a turn that no longer existed, because every
+finalizer resets it and the reaper did not.
+
+**Workflows are fault-injected at every boundary.** Paused, failed, reaped and
+cancelled at each step in turn, asserting the only thing that matters: nothing
+happened twice. This found that resuming an already-finished workflow threw
+instead of being a no-op, which a double-clicked approve button would hit.
+Resume is now idempotent, matching what approvals already promised.
+
+**Wiring is tested separately from behaviour.** Whether a protection is
+reachable is a different question from whether it works, and only the second
+was ever asked. These assert the first: tools are wrapped inside a run,
+approvable tools stay approvable through the wrapper, tools keep their names,
+the ledger is written to by a real call, every service resolves, every
+documented command is registered.
+
+### An agent whose tools skip the harness now says so
+
+Laravel AI resolves an agent's tools itself, so there is no seam to enforce
+`Clutch::policy()` from. An agent that returns tools directly still works: it
+calls the model, it runs the tools, and it silently gets no ledger, no approval
+pause, no loop guard, no deadline and no spill.
+
+That silence is this package's most repeated footgun and it shipped once as a
+release where every protection was inert. A run cannot be failed for it, since
+an agent with no tools is perfectly valid, but it no longer passes without
+comment: a turn that never consulted the policy logs a warning naming the agent.
+
 ## v0.3.2 - 2026-08-25
 
 **A reaped run left its approvals pending forever.** The reaper transitions a

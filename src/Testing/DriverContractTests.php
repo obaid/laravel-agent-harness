@@ -38,15 +38,34 @@ final class DriverContractTests
     /** @var array<int, string> */
     private array $skipped = [];
 
+    /**
+     * @param  array<string, mixed>  $configuration
+     */
     private function __construct(
         private readonly ClutchDriver $driver,
         private readonly string $sessionId = 'ses_contract',
         private readonly ?string $agentClass = null,
+        private readonly string $runId = 'run_contract',
+        private readonly array $configuration = [],
     ) {}
 
-    public static function for(ClutchDriver $driver, ?string $agentClass = null): self
-    {
-        return new self($driver, agentClass: $agentClass);
+    /**
+     * Point the suite at a driver.
+     *
+     * A driver that reads its own records needs the session and run ids to
+     * match rows that exist, so both are settable. Everything else about the
+     * contract is the same whichever driver is under test.
+     *
+     * @param  array<string, mixed>  $configuration  what start() will receive
+     */
+    public static function for(
+        ClutchDriver $driver,
+        ?string $agentClass = null,
+        string $sessionId = 'ses_contract',
+        string $runId = 'run_contract',
+        array $configuration = [],
+    ): self {
+        return new self($driver, $sessionId, $agentClass, $runId, $configuration);
     }
 
     /**
@@ -288,9 +307,19 @@ final class DriverContractTests
 
         $sink = new RecordingSink;
 
-        $result = $this->driver->continueTurn(
+        // A continuation only ever follows a turn. Driving one first is what
+        // the coordinator does, and it is what gives a driver whatever state
+        // its own resume depends on, such as a conversation.
+        $first = $this->driver->runTurn(
             $this->start(),
-            new Continuation('run_contract', [
+            $this->input('Do something that might need approval.'),
+            $sink,
+            CancellationSignal::never(),
+        );
+
+        $result = $this->driver->continueTurn(
+            $first->session ?? $this->start(),
+            new Continuation($this->runId, [
                 ApprovalDecision::approve('apr_1', 'call_1', 'some_tool'),
             ]),
             $sink,
@@ -298,6 +327,15 @@ final class DriverContractTests
         );
 
         PHPUnit::assertInstanceOf(TurnResult::class, $result);
+
+        // Whatever it decides, it must not invent a different session.
+        if ($result->session instanceof \Clutch\Laravel\Data\DriverSession) {
+            PHPUnit::assertSame(
+                $this->sessionId,
+                $result->session->sessionId,
+                'A continuation must stay within the session it was given.',
+            );
+        }
 
         $this->pass('resumes from an approval decision');
     }
@@ -349,7 +387,7 @@ final class DriverContractTests
         $result = $this->driver->runTurn(
             $this->start(),
             new TurnInput(
-                runId: 'run_contract',
+                runId: $this->runId,
                 prompt: 'Do several things.',
                 limits: TurnLimits::steps(1),
             ),
@@ -382,12 +420,13 @@ final class DriverContractTests
             agentClass: $this->agentClass,
             runtimeName: $this->agentClass === null ? $this->driver->name() : null,
             permissionMode: PermissionMode::ApproveSensitive,
+            configuration: $this->configuration,
         ));
     }
 
     private function input(string $prompt): TurnInput
     {
-        return new TurnInput(runId: 'run_contract', prompt: $prompt);
+        return new TurnInput(runId: $this->runId, prompt: $prompt);
     }
 
     private function pass(string $check): void

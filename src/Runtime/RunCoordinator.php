@@ -38,6 +38,7 @@ use Clutch\Laravel\ValueObjects\TurnLimits;
 use Illuminate\Database\Connection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Event;
+use Laravel\Ai\Contracts\HasTools;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -518,7 +519,61 @@ class RunCoordinator
             return $run->refresh();
         }
 
+        $this->warnIfToolsWereUnguarded($session, $run, $context);
+
         return $this->finalize($session, $run, $driver, $result, $startingUsage, $startedAt, $budget);
+    }
+
+    /**
+     * Say something when an agent's tools never went through the policy.
+     *
+     * Laravel AI resolves an agent's tools itself, so there is no seam here to
+     * enforce this from. An agent that returns its tools directly still works:
+     * it calls the model, it runs the tools, and it silently gets no ledger,
+     * no approval pause, no loop guard, no deadline and no spill.
+     *
+     * That silence shipped once as a release where every protection was inert.
+     * A run cannot be failed for it, because an agent with no tools at all is
+     * perfectly valid, but it should not pass without comment either.
+     */
+    protected function warnIfToolsWereUnguarded(Session $session, Run $run, RunContext $context): void
+    {
+        if ($context->sawThePolicy() || $session->agent_class === null) {
+            return;
+        }
+
+        try {
+            if (! class_exists($session->agent_class)) {
+                return;
+            }
+
+            $agent = app($session->agent_class);
+
+            if (! $agent instanceof HasTools) {
+                return;
+            }
+
+            $hasTools = iterator_to_array($agent->tools(), false) !== [];
+        } catch (Throwable) {
+            // An agent that builds tools from state we do not have is not a
+            // finding. Not being able to look is not evidence of a problem.
+            return;
+        }
+
+        if (! $hasTools) {
+            return;
+        }
+
+        $this->logger->warning(
+            'Clutch did not guard this agent\'s tools, so approvals, the idempotency ledger, loop '
+            .'guards, tool deadlines and output spilling did not run for this turn. Return them '
+            .'through Clutch::policy([...]) from the agent\'s tools() method.',
+            [
+                'agent' => $session->agent_class,
+                'session_id' => $session->id,
+                'run_id' => $run->id,
+            ],
+        );
     }
 
     /**
