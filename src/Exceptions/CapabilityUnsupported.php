@@ -20,7 +20,7 @@ final class CapabilityUnsupported extends ClutchException
     {
         return new self(
             "The [{$driver}] driver does not support [{$capability}]. ".
-            'The harness will not silently degrade a requested safety or durability feature.'
+            'Clutch will not silently degrade a requested safety or durability feature.'
         );
     }
 }

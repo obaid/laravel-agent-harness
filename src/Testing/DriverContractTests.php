@@ -13,6 +13,7 @@ use Clutch\Laravel\Data\TurnResult;
 use Clutch\Laravel\Enums\PermissionMode;
 use Clutch\Laravel\Runtime\CancellationSignal;
 use Clutch\Laravel\Runtime\Redactor;
+use Clutch\Laravel\ValueObjects\TurnLimits;
 use PHPUnit\Framework\Assert as PHPUnit;
 
 /**
@@ -67,6 +68,7 @@ final class DriverContractTests
         $this->pausesForApprovalOrDeclaresItUnsupported();
         $this->resumesFromAnApprovalDecision();
         $this->returnsAConsistentTerminalResult();
+        $this->slicesATurnOrDeclaresItUnsupported();
 
         return ['passed' => $this->passed, 'skipped' => $this->skipped];
     }
@@ -325,6 +327,50 @@ final class DriverContractTests
         }
 
         $this->pass('returns a consistent terminal result');
+    }
+
+    /**
+     * A driver claiming time slicing must actually hand a turn back.
+     *
+     * The check is the whole point of the capability flag: a driver that says
+     * it can slice but runs to completion anyway would silently break every
+     * caller sizing slices against a worker timeout.
+     */
+    private function slicesATurnOrDeclaresItUnsupported(): void
+    {
+        if (! $this->driver->capabilities()->timeSlicing) {
+            $this->skip('slices a turn (time_slicing not declared)');
+
+            return;
+        }
+
+        $sink = new RecordingSink;
+
+        $result = $this->driver->runTurn(
+            $this->start(),
+            new TurnInput(
+                runId: 'run_contract',
+                prompt: 'Do several things.',
+                limits: TurnLimits::steps(1),
+            ),
+            $sink,
+            CancellationSignal::never(),
+        );
+
+        PHPUnit::assertContains($result->outcome, [
+            TurnResult::SUSPENDED,
+            TurnResult::COMPLETED,
+            TurnResult::AWAITING_APPROVAL,
+        ], 'A sliced turn must suspend, or finish if there was less than a slice of work.');
+
+        if ($result->isSuspended()) {
+            PHPUnit::assertNotNull(
+                $result->session,
+                'A suspended turn must return the session handle the next slice resumes from.',
+            );
+        }
+
+        $this->pass('slices a turn');
     }
 
     // Helpers ------------------------------------------------------------

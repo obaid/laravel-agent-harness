@@ -34,6 +34,7 @@ use Clutch\Laravel\Streaming\StreamedRun;
 use Clutch\Laravel\Support\Id;
 use Clutch\Laravel\ValueObjects\BudgetUsage;
 use Clutch\Laravel\ValueObjects\NormalizedFailure;
+use Clutch\Laravel\ValueObjects\TurnLimits;
 use Illuminate\Database\Connection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Event;
@@ -60,6 +61,17 @@ class RunCoordinator
      * @var (Closure(\Clutch\Laravel\Models\RunEvent): void)|null
      */
     protected ?Closure $streamListener = null;
+
+    /**
+     * Runs to re-queue once the session lease has been released.
+     *
+     * A suspended turn cannot be handed straight back to the queue: on a sync
+     * connection the continuation job would run inside the lease it needs, see
+     * the session held, and exit without doing anything.
+     *
+     * @var array<int, array{run: Run, session: Session}>
+     */
+    protected array $pendingContinuations = [];
 
     public function __construct(
         protected Connection $connection,
@@ -293,7 +305,7 @@ class RunCoordinator
     {
         $run = Run::query()->with('session')->find($runId) ?? throw RunNotFound::withId($runId);
 
-        return $this->leases->withLease($run->session_id, function () use ($run, $streaming, $onEvent, $expectedVersion): Run {
+        $run = $this->leases->withLease($run->session_id, function () use ($run, $streaming, $onEvent, $expectedVersion): Run {
             // Reload with fresh state now that we hold the lease; anything read
             // before this point may have been written by the previous holder.
             $run = $run->fresh(['session']) ?? throw RunNotFound::withId($run->id);
@@ -305,6 +317,10 @@ class RunCoordinator
 
             return $this->runTurnFor($session, $run, $streaming, $onEvent, continuation: null);
         });
+
+        $this->dispatchPendingContinuations();
+
+        return $run;
     }
 
     /**
@@ -316,7 +332,7 @@ class RunCoordinator
     {
         $run = Run::query()->with('session')->find($runId) ?? throw RunNotFound::withId($runId);
 
-        return $this->leases->withLease($run->session_id, function () use ($run, $streaming, $onEvent): Run {
+        $run = $this->leases->withLease($run->session_id, function () use ($run, $streaming, $onEvent): Run {
             $run = $run->fresh(['session']) ?? throw RunNotFound::withId($run->id);
             $session = $run->session;
 
@@ -324,14 +340,24 @@ class RunCoordinator
                 return $run;
             }
 
+            // A suspended turn carries no decisions: it simply picks up where
+            // the last slice stopped. A turn that paused for approval carries
+            // the decisions that were recorded while it waited.
             $continuation = new Continuation(
                 runId: $run->id,
-                decisions: $this->approvals->decisionsFor($run),
+                decisions: $run->status === RunStatus::Suspended
+                    ? []
+                    : $this->approvals->decisionsFor($run),
+                limits: $this->limitsFor($session, $run),
                 streaming: $streaming,
             );
 
             return $this->runTurnFor($session, $run, $streaming, $onEvent, $continuation);
         });
+
+        $this->dispatchPendingContinuations();
+
+        return $run;
     }
 
     /**
@@ -370,8 +396,14 @@ class RunCoordinator
             $this->drivers->requireCapability($driver, 'streaming');
         }
 
-        if ($continuation instanceof Continuation) {
+        if ($continuation instanceof Continuation && $continuation->decisions !== []) {
             $this->drivers->requireCapability($driver, 'approvals');
+        }
+
+        $limits = $this->limitsFor($session, $run);
+
+        if ($limits->isBounded()) {
+            $this->drivers->requireCapability($driver, 'time_slicing');
         }
 
         $budget = $this->budgets->effectiveBudget($session, $run);
@@ -424,7 +456,8 @@ class RunCoordinator
             $driverSession = $this->restoreDriverSession($session, $driver);
 
             $result = $context->scope(function () use (
-                $driver, $driverSession, $run, $session, $recorder, $cancellation, $continuation, $streaming, $budget
+                $driver, $driverSession, $run, $session, $recorder, $cancellation,
+                $continuation, $streaming, $budget, $limits
             ): TurnResult {
                 if ($continuation instanceof Continuation) {
                     return $driver->continueTurn(
@@ -432,6 +465,7 @@ class RunCoordinator
                         new Continuation(
                             $continuation->runId,
                             $continuation->decisions,
+                            $limits,
                             $streaming,
                             ['budget' => $budget, 'participant' => $session->participant],
                         ),
@@ -448,6 +482,7 @@ class RunCoordinator
                         attachments: $run->input['attachments'] ?? [],
                         permissionMode: $session->permission_mode,
                         budget: $budget,
+                        limits: $limits,
                         streaming: $streaming,
                         options: ['participant' => $session->participant],
                     ),
@@ -495,7 +530,7 @@ class RunCoordinator
         if ($result->session instanceof DriverSession) {
             // A paused turn was already checkpointed by the driver at the pause
             // itself; that is the resume point, so it is not overwritten here.
-            if (! $result->isAwaitingApproval()) {
+            if (! $result->isAwaitingApproval() && ! $result->isSuspended()) {
                 $this->checkpoints->store(
                     $session,
                     $run,
@@ -512,6 +547,7 @@ class RunCoordinator
 
         return match (true) {
             $result->isAwaitingApproval() => $this->finalizeAwaitingApproval($session, $run, $result, $usage),
+            $result->isSuspended() => $this->finalizeSuspended($session, $run, $result, $usage),
             $result->exceededBudget() => $this->finalizeBudgetExceeded(
                 $session, $run,
                 $this->budgets->describeExhaustion(
@@ -572,6 +608,29 @@ class RunCoordinator
         ]);
 
         $this->transitionSession($session, SessionStatus::AwaitingApproval);
+
+        return $run->refresh();
+    }
+
+    /**
+     * Park a turn that stopped at a slice boundary and queue it to continue.
+     *
+     * The run stays alive and keeps its active-run slot, because the work is
+     * not finished. Usage accumulates across slices, so a run sliced into ten
+     * pieces still meets its budget as one run.
+     */
+    protected function finalizeSuspended(Session $session, Run $run, TurnResult $result, BudgetUsage $usage): Run
+    {
+        $this->transitionRun($run, RunStatus::Suspended, [
+            'output_text' => $result->text ?? $run->output_text,
+            'usage' => $usage->toArray(),
+            'cost_usd' => $usage->costUsd,
+        ], EventType::RunSuspended, [
+            'reason' => $result->failure?->message,
+            'usage' => $usage->toArray(),
+        ]);
+
+        $this->pendingContinuations[] = ['run' => $run, 'session' => $session];
 
         return $run->refresh();
     }
@@ -866,6 +925,40 @@ class RunCoordinator
     }
 
     // Helpers ------------------------------------------------------------
+
+    /**
+     * Re-queue every turn that suspended during this worker's lease.
+     */
+    protected function dispatchPendingContinuations(): void
+    {
+        $pending = $this->pendingContinuations;
+
+        $this->pendingContinuations = [];
+
+        foreach ($pending as ['run' => $run, 'session' => $session]) {
+            ContinueAgentRun::dispatch($run->id, $run->version)
+                ->onConnection($session->queue_connection ?? config('clutch.queue.connection'))
+                ->onQueue($session->queue ?? config('clutch.queue.queue'));
+        }
+    }
+
+    /**
+     * Resolve how much work one slice of this turn may do.
+     *
+     * Configuration sets the floor, the session may tighten it. A driver that
+     * cannot slice is never handed bounded limits, because the capability check
+     * refuses the run before it starts.
+     */
+    protected function limitsFor(Session $session, Run $run): TurnLimits
+    {
+        $configured = TurnLimits::fromArray((array) config('clutch.limits', []));
+        $session_limits = TurnLimits::fromArray((array) ($session->configuration['limits'] ?? []));
+
+        return new TurnLimits(
+            maxStepsPerSlice: $session_limits->maxStepsPerSlice ?? $configured->maxStepsPerSlice,
+            maxSecondsPerSlice: $session_limits->maxSecondsPerSlice ?? $configured->maxSecondsPerSlice,
+        );
+    }
 
     /**
      * Bring a session to `running`, reactivating it first if it was stopped.

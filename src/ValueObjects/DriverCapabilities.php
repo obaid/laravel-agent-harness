@@ -25,6 +25,8 @@ final readonly class DriverCapabilities implements Arrayable
         public bool $sessionResume = false,
         public bool $inFlightContinuation = false,
         public bool $manualCompaction = false,
+        /** Can hand a turn back mid-flight and resume it in a later job. */
+        public bool $timeSlicing = false,
         public bool $sandboxRequired = false,
         public bool $workspaceRequired = false,
     ) {}
@@ -43,6 +45,7 @@ final readonly class DriverCapabilities implements Arrayable
             'session_resume' => $this->sessionResume,
             'in_flight_continuation' => $this->inFlightContinuation,
             'manual_compaction' => $this->manualCompaction,
+            'time_slicing' => $this->timeSlicing,
             default => false,
         };
     }
@@ -61,6 +64,7 @@ final readonly class DriverCapabilities implements Arrayable
             'session_resume' => $this->sessionResume,
             'in_flight_continuation' => $this->inFlightContinuation,
             'manual_compaction' => $this->manualCompaction,
+            'time_slicing' => $this->timeSlicing,
             'sandbox_required' => $this->sandboxRequired,
             'workspace_required' => $this->workspaceRequired,
         ];

@@ -425,6 +425,18 @@ With that in place, a tool the mode denies is withheld from the agent completely
 
 A tool that asks for approval on its own, through Laravel AI's `requireApproval()`, is making its author's call rather than the harness's. `AllowAll` relaxes harness policy and leaves that alone.
 
+A session can also name the tools it may use at all, which is coarser than the
+permission mode and applies before it:
+
+```php
+Clutch::agent(SupportAgent::class)->onlyTools(['search_orders', 'draft_reply'])->create();
+Clutch::agent(SupportAgent::class)->withoutTools(['issue_refund'])->create();
+```
+
+An allow list is absolute: anything absent is withheld whatever the mode would
+have permitted. Tools that survive the list are still subject to the mode, so an
+irreversible tool on an allow list still asks for approval.
+
 Laravel authorization policies apply regardless of mode. Application rules can layer on as well, and the most restrictive answer wins:
 
 ```php
@@ -434,6 +446,129 @@ app(PolicyEngine::class)->extend(function (ToolInvocation $invocation, ToolSensi
         : null; // Defer to the other rules.
 });
 ```
+
+
+## Skills
+
+Instructions describe how an agent always behaves. A skill describes how to do
+one particular job, and only takes up context while that job is at hand.
+
+```php
+use Clutch\Laravel\Skills\Skill;
+use Clutch\Laravel\Skills\SkillRegistry;
+
+app(SkillRegistry::class)->add(new Skill(
+    name: 'refund-policy',
+    description: 'How we decide and process a refund.',
+    content: <<<'TEXT'
+    Refunds under $50 are automatic. Above that, check the account age first...
+    TEXT,
+));
+```
+
+Or keep them as files, one directory per skill with a `SKILL.md` inside:
+
+```php
+// config/clutch.php
+'skills' => ['path' => resource_path('skills')],
+```
+
+The model sees every skill's name and description, and pulls in the body of the
+one it needs. Ten procedures pasted into instructions cost tokens on every turn
+of every session; ten skills cost a line each until one is used.
+
+Give a session a subset when it should not see everything:
+
+```php
+Clutch::agent(SupportAgent::class)->withSkills(['refund-policy'])->create();
+```
+
+## Long runs that outlive a worker
+
+A run that takes twenty minutes will meet a queue worker timeout. Rather than
+being killed part-way through a step, a run can hand the turn back at a safe
+boundary and be re-queued to continue:
+
+```php
+Clutch::agent(ResearchAgent::class)
+    ->for($user)
+    ->sliceAfterSeconds(240)   // below your worker's timeout
+    ->create();
+```
+
+Each slice checkpoints, records a `run.suspended` event, and queues the
+continuation. Usage accumulates across slices, so a run cut into ten pieces
+still meets its budget as one run.
+
+Slicing needs a driver that can park a turn and pick it up again. The bundled
+`laravel-ai` driver cannot: Laravel AI runs a turn to completion, and abandoning
+it part-way discards the work rather than parking it. Asking that driver to slice
+fails with `CapabilityUnsupported` before the run starts, which is the same
+promise the package makes everywhere else.
+
+## Keeping a run on the rails
+
+Budgets stop a run that is expensive. They do nothing about one that is cheap
+and useless, like an agent calling the same tool with the same arguments forty
+times. Loop guards notice that shape:
+
+```php
+// config/clutch.php
+'guards' => [
+    'remind_after_repeats' => 3,   // tell the model it is going in circles
+    'block_after_repeats' => 8,    // refuse, and say why
+    'tool_timeout_seconds' => 60,  // bound one call, not just the whole run
+    'tool_timeouts' => ['scrape_page' => 120],
+],
+```
+
+A reminder still lets the call run. A block returns the refusal to the model as
+the tool result, which is what tells the agent to try something else rather than
+leaving it silently starved.
+
+Tool deadlines cover what a run-level duration budget cannot: a budget only
+notices an overrun once the tool returns, which is no help when the tool is the
+thing that hung.
+
+## Oversized tool output
+
+A tool that returns a 400KB page dump poisons every later step. The model pays
+for it on each turn, and the context fills with text nobody reads.
+
+```php
+// config/clutch.php
+'spill' => [
+    'enabled' => true,
+    'threshold_bytes' => 8192,
+    'preview_bytes' => 1024,
+],
+```
+
+Past the threshold, the full output is written to an artifact and the model gets
+a bounded preview plus the artifact id, with the truncation stated plainly so it
+does not answer from the fragment as though it were the whole thing. The full
+text stays downloadable through the ordinary artifact route.
+
+## Compaction
+
+A long session accumulates conversation until every turn pays for the whole
+history. Compaction summarizes the middle of it, keeping the earliest turns
+(which hold the task) and the most recent (which hold the state).
+
+```php
+// config/clutch.php
+'compaction' => [
+    'enabled' => true,
+    'trigger_at_fraction' => 0.7,  // of the token budget
+    'keep_first' => 2,
+    'keep_recent' => 8,
+],
+```
+
+The summary comes from Laravel AI's own `SummarizeAgent`, which is marked to use
+the cheapest model available, so compaction does not cost more than the context
+it saves. It is off by default: quietly rewriting an application's conversation
+is not something to do without being asked.
 
 ## Budgets
 
@@ -830,6 +965,8 @@ Set `routes.enabled` to `false` if you would rather own the HTTP surface yoursel
 8. Secrets stay out of persisted payloads.
 9. Retrying an idempotent tool does not repeat its side effect.
 10. A run is never reported complete before its terminal event and result are committed.
+11. A suspended turn resumes from its checkpoint without repeating finished work.
+12. A blocked tool call never reaches the tool.
 
 Each of these has a named test, so a regression shows up as a failure with a name on it rather than as strange behavior in production.
 

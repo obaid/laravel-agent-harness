@@ -18,6 +18,8 @@ use Clutch\Laravel\Data\TurnResult;
 use Clutch\Laravel\Enums\EventType;
 use Clutch\Laravel\Exceptions\DriverFailure;
 use Clutch\Laravel\Runtime\CancellationSignal;
+use Clutch\Laravel\Skills\SkilledAgent;
+use Clutch\Laravel\Skills\SkillRegistry;
 use Clutch\Laravel\ValueObjects\BudgetUsage;
 use Clutch\Laravel\ValueObjects\DriverCapabilities;
 use Clutch\Laravel\ValueObjects\RunBudget;
@@ -61,6 +63,7 @@ class LaravelAiDriver implements ClutchDriver
         protected BudgetManager $budgets,
         protected CostEstimator $costs,
         protected EventTranslator $translator,
+        protected SkillRegistry $skills = new SkillRegistry,
         protected array $config = [],
     ) {}
 
@@ -80,7 +83,11 @@ class LaravelAiDriver implements ClutchDriver
             sessionResume: true,
             // A provider request that dies mid-flight is repeated, not resumed.
             inFlightContinuation: false,
-            manualCompaction: false,
+            manualCompaction: true,
+            // Laravel AI runs a turn to completion. Abandoning its generator
+            // part-way discards the partial turn rather than parking it, and
+            // there is no API to resume from step N, so a turn cannot be sliced.
+            timeSlicing: false,
             sandboxRequired: false,
             workspaceRequired: false,
         );
@@ -107,6 +114,7 @@ class LaravelAiDriver implements ClutchDriver
                 'provider' => $command->config('provider'),
                 'model' => $command->config('model'),
                 'timeout' => $command->config('timeout'),
+                'skills' => $command->config('skills', []),
             ],
             conversationId: null,
         );
@@ -499,6 +507,8 @@ class LaravelAiDriver implements ClutchDriver
     {
         $agent = $this->resolveAgent((string) $session->state('agent_class'));
 
+        $agent = $this->withSkills($agent, $session);
+
         if (! $this->remembersConversations($agent)) {
             return $agent;
         }
@@ -531,6 +541,25 @@ class LaravelAiDriver implements ClutchDriver
         return $agent;
     }
 
+    /**
+     * Advertise the session's skills through the agent's instructions.
+     *
+     * A session may name a subset; naming none means every registered skill.
+     */
+    protected function withSkills(Agent $agent, DriverSession $session): Agent
+    {
+        if ($this->skills->isEmpty()) {
+            return $agent;
+        }
+
+        $named = (array) $session->state('skills', []);
+
+        return SkilledAgent::wrap(
+            $agent,
+            $named === [] ? $this->skills : $this->skills->only($named),
+        );
+    }
+
     protected function resolveAgent(string $agentClass): Agent
     {
         $agent = $this->container->make($agentClass);
@@ -544,6 +573,10 @@ class LaravelAiDriver implements ClutchDriver
 
     protected function remembersConversations(object $agent): bool
     {
+        if ($agent instanceof SkilledAgent) {
+            $agent = $agent->inner();
+        }
+
         return in_array(RemembersConversations::class, class_uses_recursive($agent), true);
     }
 

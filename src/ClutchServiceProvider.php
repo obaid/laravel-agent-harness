@@ -9,6 +9,8 @@ use Clutch\Laravel\Artifacts\ArtifactManager;
 use Clutch\Laravel\Budgets\BudgetManager;
 use Clutch\Laravel\Budgets\CostEstimator;
 use Clutch\Laravel\Checkpoints\CheckpointStore;
+use Clutch\Laravel\Compaction\CompactionPolicy;
+use Clutch\Laravel\Compaction\Compactor;
 use Clutch\Laravel\Console\CancelRunCommand;
 use Clutch\Laravel\Console\EventsCommand;
 use Clutch\Laravel\Console\MakeClutchAgentCommand;
@@ -19,6 +21,8 @@ use Clutch\Laravel\Console\RunCommand;
 use Clutch\Laravel\Console\SessionsCommand;
 use Clutch\Laravel\Contracts\SandboxProvider;
 use Clutch\Laravel\Drivers\LaravelAi\EventTranslator;
+use Clutch\Laravel\Guards\LoopGuard;
+use Clutch\Laravel\Guards\ToolDeadline;
 use Clutch\Laravel\Jobs\ExpireApprovals;
 use Clutch\Laravel\Jobs\PruneClutchRecords;
 use Clutch\Laravel\Jobs\ReapAbandonedRuns;
@@ -30,7 +34,9 @@ use Clutch\Laravel\Runtime\EventStore;
 use Clutch\Laravel\Runtime\Redactor;
 use Clutch\Laravel\Runtime\RunCoordinator;
 use Clutch\Laravel\Sandbox\NullSandboxProvider;
+use Clutch\Laravel\Skills\SkillRegistry;
 use Clutch\Laravel\Streaming\EventStreamResponse;
+use Clutch\Laravel\Tools\SpillPolicy;
 use Clutch\Laravel\Tools\ToolExecutionLedger;
 use Clutch\Laravel\ValueObjects\RunBudget;
 use Illuminate\Console\Scheduling\Schedule;
@@ -87,8 +93,58 @@ class ClutchServiceProvider extends ServiceProvider
         ));
 
         $this->app->singleton(PolicyAwareTools::class);
+
+        $this->app->singleton(SkillRegistry::class, fn ($app): SkillRegistry => tap(
+            new SkillRegistry((array) $app['config']->get('clutch.skills.registered', [])),
+            function (SkillRegistry $registry) use ($app): void {
+                $path = $app['config']->get('clutch.skills.path');
+
+                if (is_string($path) && is_dir($path)) {
+                    $registry->discover($path);
+                }
+            },
+        ));
+
+        $this->app->singleton(SpillPolicy::class, fn ($app): SpillPolicy => new SpillPolicy(
+            thresholdBytes: (int) $app['config']->get('clutch.spill.threshold_bytes', 8192),
+            previewBytes: (int) $app['config']->get('clutch.spill.preview_bytes', 1024),
+            enabled: (bool) $app['config']->get('clutch.spill.enabled', true),
+        ));
+
+        // Not shared: a guard counts repeats within one run, so a singleton
+        // would carry one run's history into the next.
+        $this->app->bind(LoopGuard::class, fn ($app): LoopGuard => new LoopGuard(
+            remindAfter: (int) $app['config']->get('clutch.guards.remind_after_repeats', 3),
+            blockAfter: (int) $app['config']->get('clutch.guards.block_after_repeats', 8),
+            enabled: (bool) $app['config']->get('clutch.guards.enabled', true),
+        ));
+
+        $this->app->singleton(ToolDeadline::class, fn ($app): ToolDeadline => new ToolDeadline(
+            defaultSeconds: $app['config']->get('clutch.guards.tool_timeout_seconds'),
+            perTool: (array) $app['config']->get('clutch.guards.tool_timeouts', []),
+        ));
+
+        $this->app->singleton(CompactionPolicy::class, fn ($app): CompactionPolicy => new CompactionPolicy(
+            triggerAtFraction: (float) $app['config']->get('clutch.compaction.trigger_at_fraction', 0.7),
+            keepFirst: (int) $app['config']->get('clutch.compaction.keep_first', 2),
+            keepRecent: (int) $app['config']->get('clutch.compaction.keep_recent', 8),
+            summarySentences: (int) $app['config']->get('clutch.compaction.summary_sentences', 6),
+            enabled: (bool) $app['config']->get('clutch.compaction.enabled', false),
+        ));
+
+        $this->app->singleton(Compactor::class, fn ($app): Compactor => new Compactor(
+            policy: $app->make(CompactionPolicy::class),
+            conversations: $app->make(\Laravel\Ai\Contracts\ConversationStore::class),
+            events: $app->make(EventStore::class),
+            logger: $app['log'],
+        ));
         $this->app->singleton(CheckpointStore::class);
-        $this->app->singleton(ToolExecutionLedger::class);
+
+        $this->app->singleton(ToolExecutionLedger::class, fn ($app): ToolExecutionLedger => new ToolExecutionLedger(
+            spill: $app->make(SpillPolicy::class),
+            guard: $app->make(LoopGuard::class),
+            deadline: $app->make(ToolDeadline::class),
+        ));
         $this->app->singleton(EventTranslator::class);
 
         $this->app->singleton(SandboxProvider::class, NullSandboxProvider::class);

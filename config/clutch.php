@@ -124,6 +124,101 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Skills
+    |--------------------------------------------------------------------------
+    |
+    | Reusable instruction bundles an agent can reach for when a task calls for
+    | one. The model sees every skill's name and description, and pulls in the
+    | body of the one it needs, so a large library costs a line each rather
+    | than its full weight on every turn.
+    |
+    | Point "path" at a directory of skill folders, each holding a SKILL.md,
+    | or register them inline below.
+    |
+    */
+
+    'skills' => [
+        'path' => env('CLUTCH_SKILLS_PATH'),
+
+        'registered' => [
+            // [
+            //     'name' => 'careful-refactors',
+            //     'description' => 'Make small, low-risk code changes.',
+            //     'content' => 'Prefer minimal diffs. Preserve public APIs...',
+            // ],
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Tool output spill
+    |--------------------------------------------------------------------------
+    |
+    | A tool that returns a very large result poisons every later step: the
+    | model pays for it on each turn and the context fills with text nobody
+    | reads. Oversized results are written to an artifact instead, and the model
+    | is handed a bounded preview plus the artifact id.
+    |
+    */
+
+    'spill' => [
+        'enabled' => env('CLUTCH_SPILL', true),
+        'threshold_bytes' => (int) env('CLUTCH_SPILL_THRESHOLD', 8192),
+        'preview_bytes' => (int) env('CLUTCH_SPILL_PREVIEW', 1024),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Loop guards
+    |--------------------------------------------------------------------------
+    |
+    | Budgets catch a run that is expensive. They do not catch one that is cheap
+    | and useless, like an agent calling the same tool with the same arguments
+    | forty times. These guards notice that shape and, past a point, refuse.
+    |
+    | Deadlines bound a single tool call, which a run-level duration budget
+    | cannot do: it only notices an overrun once the tool returns, which is no
+    | help when the tool is the thing that hung.
+    |
+    */
+
+    'guards' => [
+        'enabled' => env('CLUTCH_GUARDS', true),
+        'remind_after_repeats' => 3,
+        'block_after_repeats' => 8,
+
+        'tool_timeout_seconds' => env('CLUTCH_TOOL_TIMEOUT'),
+
+        // 'search_web' => 30,
+        'tool_timeouts' => [],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Compaction
+    |--------------------------------------------------------------------------
+    |
+    | A long session accumulates conversation until every turn pays for the
+    | whole history. Compaction summarizes the middle of it, keeping the
+    | earliest turns (which hold the task) and the most recent (which hold the
+    | state). The summary is produced by Laravel AI's SummarizeAgent, which uses
+    | the cheapest model available.
+    |
+    | Off by default: rewriting a conversation is not something to do to an
+    | application without it asking.
+    |
+    */
+
+    'compaction' => [
+        'enabled' => env('CLUTCH_COMPACTION', false),
+        'trigger_at_fraction' => 0.7,
+        'keep_first' => 2,
+        'keep_recent' => 8,
+        'summary_sentences' => 6,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Artifacts
     |--------------------------------------------------------------------------
     |
@@ -169,6 +264,30 @@ return [
         'max_tokens' => 250_000,
         'max_cost_usd' => null,
         'max_duration_seconds' => 900,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Turn limits
+    |--------------------------------------------------------------------------
+    |
+    | How much work one slice of a turn may do before the driver hands it back
+    | and the run is re-queued to continue. This is not a budget: a budget ends
+    | a run, these limits end a slice and leave the run alive.
+    |
+    | Size the wall-clock limit below your queue worker's timeout so a long run
+    | parks itself deliberately instead of being killed part-way through.
+    |
+    | Both are null by default, meaning a turn runs to completion. Only drivers
+    | declaring the "time_slicing" capability accept them; the bundled
+    | laravel-ai driver does not, because Laravel AI cannot resume a turn it
+    | abandoned mid-flight.
+    |
+    */
+
+    'limits' => [
+        'max_steps_per_slice' => env('CLUTCH_MAX_STEPS_PER_SLICE'),
+        'max_seconds_per_slice' => env('CLUTCH_MAX_SECONDS_PER_SLICE'),
     ],
 
     /*

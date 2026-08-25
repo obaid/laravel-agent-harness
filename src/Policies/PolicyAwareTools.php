@@ -47,17 +47,44 @@ class PolicyAwareTools
         }
 
         $mode = $context->permissionMode();
+        $configuration = (array) ($context->session->configuration ?? []);
+
+        /** @var array<int, string> $active */
+        $active = (array) ($configuration['active_tools'] ?? []);
+        /** @var array<int, string> $inactive */
+        $inactive = (array) ($configuration['inactive_tools'] ?? []);
+
         $allowed = [];
 
         foreach ($tools as $tool) {
+            $name = $this->nameOf($tool);
+
+            // An allow list, when present, is absolute: anything not named on
+            // it is withheld regardless of how safe the policy thinks it is.
+            if ($active !== [] && ! in_array($name, $active, true)) {
+                $context->log('info', 'A tool was withheld because the session names an allow list.', [
+                    'tool' => $name,
+                ]);
+
+                continue;
+            }
+
+            if (in_array($name, $inactive, true)) {
+                $context->log('info', 'A tool was withheld because the session denies it.', [
+                    'tool' => $name,
+                ]);
+
+                continue;
+            }
+
             $decision = $this->policy->decide(
-                $context->invocationFor($this->nameOf($tool), 'policy-preflight'),
+                $context->invocationFor($name, 'policy-preflight'),
                 $tool,
             );
 
             if ($decision->isDenied()) {
-                $context->log('info', 'A tool was withheld from the agent by harness policy.', [
-                    'tool' => $this->nameOf($tool),
+                $context->log('info', 'A tool was withheld from the agent by Clutch policy.', [
+                    'tool' => $name,
                     'reason' => $decision->reason,
                     'permission_mode' => $mode->value,
                 ]);

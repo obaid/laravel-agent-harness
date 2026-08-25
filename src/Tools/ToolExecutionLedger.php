@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace Clutch\Laravel\Tools;
 
 use Closure;
+use Clutch\Laravel\Artifacts\ArtifactRegistrar;
 use Clutch\Laravel\Contracts\IdempotentTool;
 use Clutch\Laravel\Data\ToolInvocation;
+use Clutch\Laravel\Guards\LoopGuard;
+use Clutch\Laravel\Guards\ToolDeadline;
 use Clutch\Laravel\Models\ToolExecution;
 use Clutch\Laravel\Support\Id;
 use Illuminate\Database\QueryException;
@@ -22,6 +25,12 @@ use Throwable;
  */
 class ToolExecutionLedger
 {
+    public function __construct(
+        protected ?SpillPolicy $spill = null,
+        protected ?LoopGuard $guard = null,
+        protected ?ToolDeadline $deadline = null,
+    ) {}
+
     /**
      * Execute a tool through the ledger.
      *
@@ -29,13 +38,21 @@ class ToolExecutionLedger
      * harness records them for audit but makes no duplicate-suppression claim,
      * because it cannot safely make one on their behalf.
      *
-     * @template TResult
-     *
-     * @param  Closure(): TResult  $execute
-     * @return TResult
+     * @param  Closure(): mixed  $execute
      */
     public function guard(ToolInvocation $invocation, ?object $tool, Closure $execute): mixed
     {
+        // A blocked call never reaches the tool, so the refusal is what the
+        // model gets back as the result. That is deliberate: an agent stuck in
+        // a loop needs to be told, not silently starved.
+        $verdict = $this->guard?->inspect($invocation);
+
+        if ($verdict !== null && $verdict->isBlocked()) {
+            return (string) $verdict->message;
+        }
+
+        $execute = $this->withDeadline($invocation, $execute);
+
         $key = $tool instanceof IdempotentTool
             ? $tool->idempotencyKey($invocation)
             : null;
@@ -90,6 +107,46 @@ class ToolExecutionLedger
     }
 
     /**
+     * Wrap a tool call in its deadline, when one applies.
+     *
+     * @param  Closure(): mixed  $execute
+     * @return Closure(): mixed
+     */
+    protected function withDeadline(ToolInvocation $invocation, Closure $execute): Closure
+    {
+        $deadline = $this->deadline;
+
+        if (! $deadline instanceof ToolDeadline) {
+            return $execute;
+        }
+
+        return static fn (): mixed => $deadline->guard($invocation, $execute);
+    }
+
+    /**
+     * Replace an oversized result with a preview and an artifact reference.
+     *
+     * Called by the driver once it knows which run the result belongs to, since
+     * the ledger itself has no artifact registrar of its own.
+     */
+    public function spillIfOversized(
+        ToolInvocation $invocation,
+        string $result,
+        ArtifactRegistrar $artifacts,
+    ): string {
+        if (! $this->spill instanceof SpillPolicy || ! $this->spill->shouldSpill($result)) {
+            return $result;
+        }
+
+        return (string) $this->spill->spill(
+            $artifacts,
+            $invocation->toolName,
+            $invocation->toolCallId,
+            $result,
+        );
+    }
+
+    /**
      * Look up a previously recorded side effect.
      */
     public function findByKey(string $sessionId, string $key): ?ToolExecution
@@ -135,10 +192,7 @@ class ToolExecutionLedger
     /**
      * Record a non-idempotent execution for audit only.
      *
-     * @template TResult
-     *
-     * @param  Closure(): TResult  $execute
-     * @return TResult
+     * @param  Closure(): mixed  $execute
      */
     protected function recordUnguarded(ToolInvocation $invocation, Closure $execute): mixed
     {

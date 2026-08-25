@@ -203,3 +203,58 @@ it('12. keeps one participant from reaching another participant\'s session', fun
     expect(Clutch::sessionsFor($stranger))->toBeEmpty()
         ->and(Clutch::sessionsFor($this->owner))->toHaveCount(1);
 });
+
+it('13. resumes a suspended turn without repeating finished work', function (): void {
+    $this->clutch->script([
+        ClutchResult::text('Done.')
+            ->withToolCall('first_tool', ['n' => 1], 'a')
+            ->withToolCall('second_tool', ['n' => 2], 'b'),
+    ]);
+
+    $session = Clutch::agent(ResearchAgent::class)
+        ->for($this->owner)
+        ->sliceAfterSteps(1)
+        ->create();
+
+    $run = $session->queue('Do both things.')->refresh();
+
+    expect($run->status)->toBe(RunStatus::Completed);
+
+    // Each tool ran once despite the turn crossing several slices.
+    $calls = $run->events()->where('type', 'tool.call.requested')->get();
+
+    expect($calls->pluck('payload.tool')->all())->toBe(['first_tool', 'second_tool'])
+        ->and($run->events()->where('type', 'run.suspended')->count())->toBeGreaterThan(0);
+});
+
+it('14. never lets a blocked tool call reach the tool', function (): void {
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
+    $run = Clutch::coordinator()->createRun($session, 'Do it.');
+
+    $ledger = new \Clutch\Laravel\Tools\ToolExecutionLedger(
+        guard: new \Clutch\Laravel\Guards\LoopGuard(remindAfter: 1, blockAfter: 1),
+    );
+
+    $call = new \Clutch\Laravel\Data\ToolInvocation(
+        sessionId: $session->id,
+        runId: $run->id,
+        toolCallId: 'call_1',
+        toolName: 'charge_customer',
+        arguments: ['invoice' => 1],
+    );
+
+    $sideEffects = 0;
+    $execute = function () use (&$sideEffects): string {
+        $sideEffects++;
+
+        return 'charged';
+    };
+
+    $ledger->guard($call, null, $execute);
+    $ledger->guard($call, null, $execute);
+    $ledger->guard($call, null, $execute);
+
+    // The guard refused the repeats outright rather than letting the side
+    // effect run and discarding its result.
+    expect($sideEffects)->toBe(1);
+});

@@ -145,6 +145,81 @@ class SessionBuilder
     }
 
     /**
+     * Restrict this session to exactly these tools.
+     *
+     * An allow list is absolute: anything absent is withheld from the agent,
+     * whatever the permission mode would otherwise have allowed. Pass either
+     * this or withoutTools(), not both.
+     *
+     * @param  array<int, string>  $tools
+     */
+    public function onlyTools(array $tools): static
+    {
+        if ($this->configuration['inactive_tools'] ?? false) {
+            throw new InvalidArgumentException(
+                'A session may name an allow list or a deny list, not both. '.
+                'Use onlyTools() or withoutTools().'
+            );
+        }
+
+        return $this->configure('active_tools', array_values($tools));
+    }
+
+    /**
+     * Withhold these tools from the session.
+     *
+     * @param  array<int, string>  $tools
+     */
+    public function withoutTools(array $tools): static
+    {
+        if ($this->configuration['active_tools'] ?? false) {
+            throw new InvalidArgumentException(
+                'A session may name an allow list or a deny list, not both. '.
+                'Use onlyTools() or withoutTools().'
+            );
+        }
+
+        return $this->configure('inactive_tools', array_values($tools));
+    }
+
+    /**
+     * Give the session a named subset of the registered skills.
+     *
+     * @param  array<int, string>  $skills
+     */
+    public function withSkills(array $skills): static
+    {
+        return $this->configure('skills', array_values($skills));
+    }
+
+    /**
+     * Hand the turn back after this many steps so the run can be re-queued.
+     *
+     * Requires a driver that declares the "time_slicing" capability.
+     */
+    public function sliceAfterSteps(int $steps): static
+    {
+        return $this->configure('limits', [
+            ...(array) ($this->configuration['limits'] ?? []),
+            'max_steps_per_slice' => max(1, $steps),
+        ]);
+    }
+
+    /**
+     * Hand the turn back after this much wall-clock time.
+     *
+     * Set this below the queue worker timeout so a long run parks itself rather
+     * than being killed part-way through a step.
+     */
+    public function sliceAfterSeconds(int $seconds): static
+    {
+        return $this->configure('limits', [
+            ...(array) ($this->configuration['limits'] ?? []),
+            'max_seconds_per_slice' => max(1, $seconds),
+        ]);
+    }
+
+    /**
      * Driver configuration, such as provider or model overrides.
      *
      * @param  array<string, mixed>|string  $key

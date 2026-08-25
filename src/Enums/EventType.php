@@ -21,7 +21,11 @@ enum EventType: string
     case ArtifactCreated = 'artifact.created';
     case UsageUpdated = 'usage.updated';
     case CheckpointCreated = 'checkpoint.created';
+    case CompactionApplied = 'compaction.applied';
+    case ToolOutputSpilled = 'tool.output.spilled';
+    case GuardTripped = 'guard.tripped';
     case RunAwaitingApproval = 'run.awaiting_approval';
+    case RunSuspended = 'run.suspended';
     case RunCompleted = 'run.completed';
     case RunFailed = 'run.failed';
     case RunCancelled = 'run.cancelled';

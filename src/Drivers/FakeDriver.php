@@ -21,6 +21,7 @@ use Clutch\Laravel\Testing\ScriptedResponse;
 use Clutch\Laravel\ValueObjects\BudgetUsage;
 use Clutch\Laravel\ValueObjects\DriverCapabilities;
 use Clutch\Laravel\ValueObjects\NormalizedFailure;
+use Clutch\Laravel\ValueObjects\TurnLimits;
 use Illuminate\Support\Str;
 
 /**
@@ -73,7 +74,8 @@ class FakeDriver implements ClutchDriver
             structuredOutput: true,
             sessionResume: true,
             inFlightContinuation: false,
-            manualCompaction: false,
+            manualCompaction: true,
+            timeSlicing: true,
         );
     }
 
@@ -111,7 +113,7 @@ class FakeDriver implements ClutchDriver
 
         $response = $this->nextResponse($input->prompt);
 
-        return $this->play($session, $response, $events, $cancellation, $input->prompt);
+        return $this->play($session, $response, $events, $cancellation, $input->prompt, $input->limits);
     }
 
     public function continueTurn(
@@ -134,9 +136,22 @@ class FakeDriver implements ClutchDriver
             ]);
         }
 
+        // A continuation with no decisions resumes a suspended turn rather
+        // than answering an approval, so the scripted response is not advanced.
+        if ($continuation->decisions === []) {
+            return $this->play(
+                $session,
+                $this->currentResponse(),
+                $events,
+                $cancellation,
+                '',
+                $continuation->limits,
+            );
+        }
+
         $response = $this->nextResponse('');
 
-        return $this->play($session, $response, $events, $cancellation, '');
+        return $this->play($session, $response, $events, $cancellation, '', $continuation->limits);
     }
 
     public function checkpoint(DriverSession $session): DriverCheckpoint
@@ -190,19 +205,36 @@ class FakeDriver implements ClutchDriver
         DriverEventSink $events,
         CancellationSignal $cancellation,
         string $prompt,
+        TurnLimits $limits = new TurnLimits,
     ): TurnResult {
         $session = $session->withState(['turns' => (int) $session->state('turns', 0) + 1]);
+
+        // Where the previous slice of this turn stopped.
+        $sliceStart = (int) $session->state('slice_cursor', 0);
+        $startedAt = microtime(true);
+        $stepsThisSlice = 0;
 
         if ($cancellation->isCancelled()) {
             return TurnResult::cancelled(usage: new BudgetUsage, session: $session);
         }
 
-        $events->emit(EventType::StepStarted, ['step' => 1]);
+        $events->emit(EventType::StepStarted, ['step' => $sliceStart + 1]);
 
-        foreach ($response->toolCalls as $call) {
+        foreach ($response->toolCalls as $index => $call) {
             if ($cancellation->isCancelled()) {
                 return TurnResult::cancelled(usage: $response->usage, session: $session);
             }
+
+            // Replay past what earlier slices already did.
+            if ($index < $sliceStart) {
+                continue;
+            }
+
+            if ($limits->reached($stepsThisSlice, microtime(true) - $startedAt)) {
+                return $this->suspend($session, $index, $events, $response, $limits, $stepsThisSlice, $startedAt);
+            }
+
+            $stepsThisSlice++;
 
             $toolCallId = 'call_'.Str::lower((string) Str::ulid());
 
@@ -217,6 +249,14 @@ class FakeDriver implements ClutchDriver
                 'tool' => $call['tool'],
                 'result' => $call['result'],
             ]);
+        }
+
+        // The text phase is one more step, so a one-step-per-slice caller gets
+        // a boundary between the last tool and the answer.
+        if ($limits->reached($stepsThisSlice, microtime(true) - $startedAt)) {
+            return $this->suspend(
+                $session, count($response->toolCalls), $events, $response, $limits, $stepsThisSlice, $startedAt,
+            );
         }
 
         if ($response->kind === ScriptedResponse::APPROVAL) {
@@ -261,8 +301,45 @@ class FakeDriver implements ClutchDriver
             text: $response->text,
             structuredOutput: $response->structured,
             usage: $response->usage,
-            session: $session,
+            session: $session->withState(['slice_cursor' => 0]),
         );
+    }
+
+    /**
+     * Park the turn at a slice boundary, recording where to pick it up.
+     */
+    protected function suspend(
+        DriverSession $session,
+        int $cursor,
+        DriverEventSink $events,
+        ScriptedResponse $response,
+        TurnLimits $limits,
+        int $steps,
+        float $startedAt,
+    ): TurnResult {
+        $session = $session->withState(['slice_cursor' => $cursor]);
+
+        $events->checkpoint($this->checkpoint($session)->because('slice_boundary'));
+
+        return TurnResult::suspended(
+            session: $session,
+            usage: $response->usage,
+            reason: $limits->reasonFor($steps, microtime(true) - $startedAt),
+        );
+    }
+
+    /**
+     * The response the current turn is working through, without advancing.
+     */
+    protected function currentResponse(): ScriptedResponse
+    {
+        $list = array_values(array_filter(
+            $this->responses,
+            fn (mixed $value, mixed $key): bool => is_int($key),
+            ARRAY_FILTER_USE_BOTH,
+        ));
+
+        return $this->marshal($list[max(0, $this->index - 1)] ?? null, '');
     }
 
     /**

@@ -10,6 +10,9 @@ enum RunStatus: string
     case Queued = 'queued';
     case Running = 'running';
     case AwaitingApproval = 'awaiting_approval';
+
+    /** Stopped at a slice boundary with work still to do. Not terminal. */
+    case Suspended = 'suspended';
     case Cancelling = 'cancelling';
     case Completed = 'completed';
     case Failed = 'failed';
@@ -40,7 +43,7 @@ enum RunStatus: string
      */
     public function isPaused(): bool
     {
-        return $this === self::AwaitingApproval;
+        return $this === self::AwaitingApproval || $this === self::Suspended;
     }
 
     /**
@@ -62,7 +65,11 @@ enum RunStatus: string
                 self::Failed, self::BudgetExceeded,
             ],
             self::Running => [
-                self::Completed, self::AwaitingApproval, self::Cancelling,
+                self::Completed, self::AwaitingApproval, self::Suspended, self::Cancelling,
+                self::Cancelled, self::Failed, self::BudgetExceeded,
+            ],
+            self::Suspended => [
+                self::Queued, self::Running, self::Cancelling,
                 self::Cancelled, self::Failed, self::BudgetExceeded,
             ],
             self::AwaitingApproval => [self::Queued, self::Running, self::Cancelling, self::Cancelled, self::Failed],

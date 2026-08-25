@@ -689,6 +689,8 @@ These invariants require explicit automated tests:
 10. A driver cannot silently claim an unsupported capability.
 11. A retry never reuses a terminal run record.
 12. A user cannot retrieve another tenant's session through any package route.
+13. A suspended turn resumes from its checkpoint without repeating finished work.
+14. A tool call blocked by a guard never reaches the tool.
 
 
 ## 20. As-built component map

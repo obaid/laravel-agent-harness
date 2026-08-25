@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Clutch\Laravel\Data;
 
+use Clutch\Laravel\ValueObjects\TurnLimits;
+
 /**
  * The resolved decisions that wake a paused turn.
  */
@@ -16,6 +18,8 @@ final readonly class Continuation
     public function __construct(
         public string $runId,
         public array $decisions = [],
+        /** How much work this slice may do before handing the turn back. */
+        public TurnLimits $limits = new TurnLimits,
         public bool $streaming = false,
         public array $options = [],
     ) {}

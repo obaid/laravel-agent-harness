@@ -19,7 +19,8 @@ it('passes the shared driver contract suite', function (): void {
         ->toContain('round-trips a checkpoint')
         ->toContain('keeps secrets out of checkpoints')
         ->toContain('stops when cancelled')
-        ->toContain('returns a consistent terminal result');
+        ->toContain('returns a consistent terminal result')
+        ->toContain('slices a turn');
 
     expect($result['skipped'])->toBeEmpty();
 });
@@ -41,7 +42,8 @@ it('skips checks a driver does not claim to support', function (): void {
 
     expect($result['skipped'])
         ->toContain('keeps sequential turns in one session (session_resume not declared)')
-        ->toContain('resumes from an approval decision (approvals not declared)');
+        ->toContain('resumes from an approval decision (approvals not declared)')
+        ->toContain('slices a turn (time_slicing not declared)');
 
     // A deliberately limited driver still passes the contract.
     expect($result['passed'])->toContain('starts and stops a session');

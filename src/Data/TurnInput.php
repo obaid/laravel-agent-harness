@@ -6,6 +6,7 @@ namespace Clutch\Laravel\Data;
 
 use Clutch\Laravel\Enums\PermissionMode;
 use Clutch\Laravel\ValueObjects\RunBudget;
+use Clutch\Laravel\ValueObjects\TurnLimits;
 
 /**
  * One new unit of input for a driver to process.
@@ -22,6 +23,8 @@ final readonly class TurnInput
         public array $attachments = [],
         public PermissionMode $permissionMode = PermissionMode::ApproveSensitive,
         public ?RunBudget $budget = null,
+        /** How much work this slice may do before handing the turn back. */
+        public TurnLimits $limits = new TurnLimits,
         public bool $streaming = false,
         public array $options = [],
     ) {}

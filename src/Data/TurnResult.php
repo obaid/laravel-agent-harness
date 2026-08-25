@@ -10,7 +10,9 @@ use Clutch\Laravel\ValueObjects\NormalizedFailure;
 /**
  * What a driver returns when it stops working on a turn.
  *
- * Exactly one outcome is true: completed, paused for approval, cancelled, or failed.
+ * Exactly one outcome is true. Most are terminal, but `suspended` is not: it
+ * means the driver stopped at a safe boundary with work still to do, and the
+ * run should be re-queued to carry on.
  */
 final readonly class TurnResult
 {
@@ -23,6 +25,15 @@ final readonly class TurnResult
     public const FAILED = 'failed';
 
     public const BUDGET_EXCEEDED = 'budget_exceeded';
+
+    /**
+     * The driver hit a step or time-slice boundary with work remaining.
+     *
+     * Unlike every other outcome this is not terminal. A queue worker that is
+     * about to time out can hand the turn back mid-flight, and the coordinator
+     * re-queues it to continue from the checkpoint.
+     */
+    public const SUSPENDED = 'suspended';
 
     /**
      * @param  array<int, PendingApproval>  $pendingApprovals
@@ -91,6 +102,26 @@ final readonly class TurnResult
         );
     }
 
+    /**
+     * The driver stopped at a safe boundary with work still to do.
+     *
+     * The session handle is required: it is what the next attempt resumes from.
+     */
+    public static function suspended(
+        DriverSession $session,
+        ?string $text = null,
+        BudgetUsage $usage = new BudgetUsage,
+        ?string $reason = null,
+    ): self {
+        return new self(
+            self::SUSPENDED, $text, null, [], $usage,
+            $reason === null ? null : new NormalizedFailure(
+                \Clutch\Laravel\Enums\FailureCategory::Unknown, $reason,
+            ),
+            $session,
+        );
+    }
+
     public static function failed(
         NormalizedFailure $failure,
         BudgetUsage $usage = new BudgetUsage,
@@ -122,5 +153,13 @@ final readonly class TurnResult
     public function exceededBudget(): bool
     {
         return $this->outcome === self::BUDGET_EXCEEDED;
+    }
+
+    /**
+     * Determine whether the driver stopped with work still to do.
+     */
+    public function isSuspended(): bool
+    {
+        return $this->outcome === self::SUSPENDED;
     }
 }
