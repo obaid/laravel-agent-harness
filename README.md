@@ -307,6 +307,21 @@ Accept: text/event-stream
 
 Every event carries a sequence number that only goes up. A browser that disconnects after event 42 reconnects with `after=42`, and the server replays what it stored before switching to live events.
 
+Frames carry `id:` and `data:` only. The SSE event is deliberately not named
+after the type, because that would stop `EventSource.onmessage` firing and force
+every client to register a listener per type it might ever see. The type is on
+the payload, so the obvious client is the correct one:
+
+```js
+const source = new EventSource(`/api/clutch/runs/${runId}/events?after=${cursor}`)
+
+source.onmessage = (message) => {
+  if (message.data === '[DONE]') return source.close()
+
+  const event = JSON.parse(message.data)   // event.type, event.sequence, event.payload
+}
+```
+
 Network delivery is at least once, so clients should deduplicate by `(run_id, sequence)`. Storage is exactly once and ordered.
 
 The stored history is the same whether a run was streamed directly or executed on a queue, so a reconnecting client sees the same thing either way.

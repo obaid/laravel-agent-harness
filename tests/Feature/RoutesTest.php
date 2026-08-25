@@ -204,7 +204,15 @@ it('streams run events as server-sent events', function (): void {
 
     $body = $response->streamedContent();
 
-    expect($body)->toContain('event: run.created')
-        ->toContain('event: run.completed')
-        ->toContain('data: [DONE]');
+    // Frames carry id: and data: only. Naming the SSE event after the type
+    // would stop EventSource.onmessage firing, silently breaking the most
+    // obvious client anyone writes, so the type travels in the payload.
+    expect($body)->toContain('"type":"run.created"')
+        ->toContain('"type":"run.completed"')
+        ->toContain('data: [DONE]')
+        ->not->toContain('event: run.');
+
+    // The sequence still rides as the SSE id, so a browser can resume with
+    // Last-Event-ID rather than only with our own cursor.
+    expect($body)->toContain('id: 1');
 });

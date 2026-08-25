@@ -229,6 +229,8 @@ function follow(runId, onEvent) {
     `/api/clutch/runs/${runId}/events?after=${cursor}`
   )
 
+  // Every frame arrives here, because the stream does not name its SSE
+  // events. The type is on the payload instead.
   source.onmessage = (message) => {
     if (message.data === '[DONE]') return source.close()
 

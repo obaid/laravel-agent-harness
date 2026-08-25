@@ -5,6 +5,23 @@ Notable changes to `obaid/laravel-clutch`.
 This project follows [Semantic Versioning](https://semver.org). Before v1.0, a
 breaking change needs a changelog entry and an upgrade note.
 
+## v0.1.2 - 2026-08-25
+
+Fixes the event stream so the obvious client works.
+
+Frames were emitted as `id:`, `event: {type}`, `data: {...}`. Naming the SSE
+event stops `EventSource.onmessage` from firing at all, so a client had to call
+`addEventListener` for every event type it might ever see. The documented
+example used `onmessage`, which means it never worked.
+
+Frames now carry `id:` and `data:` only. The type was always on the payload, so
+nothing is lost, and `id:` still carries the sequence for `Last-Event-ID`
+resumption. A client that registered per-type listeners needs to switch on
+`event.type` from the payload instead.
+
+Found by building a chat UI against the package, where the stream is the entire
+interface and the failure was immediately visible.
+
 ## v0.1.1 - 2026-08-25
 
 Fixes a bug that made the bundled driver unusable from the published config.

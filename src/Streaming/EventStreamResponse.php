@@ -95,7 +95,14 @@ class EventStreamResponse
     protected function framesFor(\Clutch\Laravel\Models\RunEvent $event, ?VercelDataProtocol $protocol): array
     {
         if (! $protocol instanceof VercelDataProtocol) {
-            return ["id: {$event->sequence}\nevent: {$event->type->value}\n"
+            // Only `id:` and `data:`, deliberately. Naming the SSE event
+            // after the type would stop EventSource.onmessage firing at all,
+            // and every client would have to addEventListener for each type it
+            // might ever see. The type is already in the payload, so this
+            // keeps the obvious client correct.
+            //
+            // `id:` stays: it is what lets a browser resume with Last-Event-ID.
+            return ["id: {$event->sequence}\n"
                 .'data: '.json_encode($event->toEnvelope())."\n\n"];
         }
 
