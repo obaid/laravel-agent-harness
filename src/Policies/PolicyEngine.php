@@ -9,6 +9,7 @@ use Clutch\Laravel\Contracts\SensitiveTool;
 use Clutch\Laravel\Data\ToolInvocation;
 use Clutch\Laravel\Enums\PermissionMode;
 use Clutch\Laravel\Enums\ToolSensitivity;
+use Illuminate\Support\Str;
 
 /**
  * Combines permission mode, tool sensitivity, and application callbacks.
@@ -75,7 +76,12 @@ class PolicyEngine
             return $tool->sensitivity();
         }
 
-        $configured = $this->sensitivityMap[$toolName] ?? null;
+        // Tools reach us as Laravel AI names them, which is the class basename
+        // unless a tool names itself. Configuration is more naturally written
+        // in snake_case, so both spellings resolve to the same entry.
+        $configured = $this->sensitivityMap[$toolName]
+            ?? $this->sensitivityMap[Str::snake($toolName)]
+            ?? null;
 
         if (is_string($configured)) {
             return ToolSensitivity::tryFrom($configured) ?? ToolSensitivity::default();
@@ -101,7 +107,8 @@ class PolicyEngine
     {
         $mode = $invocation->permissionMode;
 
-        if (in_array($invocation->toolName, $this->alwaysAllow, true)) {
+        if (in_array($invocation->toolName, $this->alwaysAllow, true)
+            || in_array(Str::snake($invocation->toolName), $this->alwaysAllow, true)) {
             return PolicyDecision::allow();
         }
 

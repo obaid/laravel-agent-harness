@@ -45,7 +45,7 @@ class LoopGuard
             return GuardDecision::proceed();
         }
 
-        $key = $invocation->toolName.':'.$invocation->argumentsDigest();
+        $key = $this->keyFor($invocation);
 
         $count = $this->seen[$key] = ($this->seen[$key] ?? 0) + 1;
 
@@ -72,7 +72,18 @@ class LoopGuard
      */
     public function timesSeen(ToolInvocation $invocation): int
     {
-        return $this->seen[$invocation->toolName.':'.$invocation->argumentsDigest()] ?? 0;
+        return $this->seen[$this->keyFor($invocation)] ?? 0;
+    }
+
+    /**
+     * Identical calls are only "the same" within one run.
+     *
+     * A queue worker handles many runs in its lifetime, so leaving the run out
+     * would let one run's repetition count against the next one's budget.
+     */
+    protected function keyFor(ToolInvocation $invocation): string
+    {
+        return $invocation->runId.':'.$invocation->toolName.':'.$invocation->argumentsDigest();
     }
 
     /**

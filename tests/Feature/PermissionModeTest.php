@@ -57,6 +57,32 @@ it('passes tools through untouched outside a harness run', function (): void {
     expect($tools)->toHaveCount(2);
 });
 
+it('wraps every tool it lets through, so the ledger actually runs', function (): void {
+    $tools = withinRun(PermissionMode::AllowAll, fn (): array => app(PolicyAwareTools::class)
+        ->apply([new SearchWeb, new PublishArticle]));
+
+    // Laravel AI executes tools inside its own loop, so the wrapper is the only
+    // place the ledger, guards and spill policy can sit.
+    foreach ($tools as $tool) {
+        expect($tool)->toBeInstanceOf(\Clutch\Laravel\Tools\GuardedTool::class);
+    }
+
+    // And the wrapper is transparent: the model still sees the real name.
+    expect(app(PolicyAwareTools::class)->nameOf($tools[0]))->toBe('SearchWeb');
+});
+
+it('keeps an approvable tool approvable through the wrapper', function (): void {
+    config()->set('clutch.permissions.tools', ['publish_article' => 'irreversible']);
+
+    $tools = withinRun(PermissionMode::ApproveSensitive, fn (): array => app(PolicyAwareTools::class)
+        ->apply([new PublishArticle]));
+
+    // Laravel AI decides whether a call pauses by checking instanceof
+    // Approvable, so a wrapper that dropped it would silently kill approvals.
+    expect($tools[0])->toBeInstanceOf(Laravel\Ai\Contracts\Approvable::class)
+        ->and(wouldPause($tools[0]))->toBeTrue();
+});
+
 it('lets safe tools through and marks sensitive ones for approval', function (): void {
     $tools = withinRun(PermissionMode::ApproveSensitive, function (): array {
         return app(PolicyAwareTools::class)->apply([new SearchWeb, new DraftEmail, new PublishArticle]);
@@ -79,7 +105,7 @@ it('withholds a denied tool from the agent entirely', function (): void {
     // The model is never told the denied tool exists; refusing after the fact
     // would still have exposed the capability.
     expect($tools)->toHaveCount(1)
-        ->and($tools[0])->toBeInstanceOf(SearchWeb::class);
+        ->and($tools[0]->inner())->toBeInstanceOf(SearchWeb::class);
 });
 
 it('requires approval for every state-changing tool in approve-all mode', function (): void {
@@ -126,11 +152,28 @@ it('honors an always-allow list even under deny-by-default', function (): void {
     expect($tools)->toHaveCount(2);
 });
 
-it('derives the tool name Laravel AI uses', function (): void {
+it('uses the same tool name as Laravel AI', function (): void {
     $resolver = app(PolicyAwareTools::class);
 
-    expect($resolver->nameOf(new SearchWeb))->toBe('search_web')
-        ->and($resolver->nameOf(new PublishArticle))->toBe('publish_article');
+    // One name reaches the model, the approval record, the events and the
+    // ledger, so an operator reading any of them sees the same thing.
+    expect($resolver->nameOf(new SearchWeb))->toBe('SearchWeb')
+        ->and($resolver->nameOf(new PublishArticle))->toBe('PublishArticle');
+});
+
+it('accepts either spelling in configuration', function (): void {
+    // snake_case reads better in a config file, so both resolve.
+    config()->set('clutch.permissions.tools', ['search_web' => 'read_only']);
+    app()->forgetInstance(\Clutch\Laravel\Policies\PolicyEngine::class);
+
+    expect(app(\Clutch\Laravel\Policies\PolicyEngine::class)->sensitivityOf('SearchWeb'))
+        ->toBe(\Clutch\Laravel\Enums\ToolSensitivity::ReadOnly);
+
+    config()->set('clutch.permissions.tools', ['SearchWeb' => 'read_only']);
+    app()->forgetInstance(\Clutch\Laravel\Policies\PolicyEngine::class);
+
+    expect(app(\Clutch\Laravel\Policies\PolicyEngine::class)->sensitivityOf('SearchWeb'))
+        ->toBe(\Clutch\Laravel\Enums\ToolSensitivity::ReadOnly);
 });
 
 it('exposes the permission mode to tools through the run context', function (): void {
@@ -143,5 +186,5 @@ it('is reachable through the facade', function (): void {
     $tools = withinRun(PermissionMode::DenyByDefault, fn (): array => Clutch::policy([new SearchWeb, new PublishArticle]));
 
     expect($tools)->toHaveCount(1)
-        ->and($tools[0])->toBeInstanceOf(SearchWeb::class);
+        ->and($tools[0]->inner())->toBeInstanceOf(SearchWeb::class);
 });

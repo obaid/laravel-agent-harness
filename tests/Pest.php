@@ -30,3 +30,26 @@ function withinSession(Clutch\Laravel\Models\Session $session, Closure $callback
 
     return $context->scope($callback);
 }
+
+/**
+ * Run a callback inside a real run context, the way a driver does.
+ */
+function withRunContext(
+    Clutch\Laravel\Models\Session $session,
+    Clutch\Laravel\Models\Run $run,
+    Closure $callback,
+): mixed {
+    $context = new Clutch\Laravel\Runtime\RunContext(
+        session: $session,
+        run: $run,
+        artifacts: new Clutch\Laravel\Artifacts\ArtifactRegistrar(
+            $run,
+            app(Clutch\Laravel\Artifacts\ArtifactManager::class),
+        ),
+        cancellation: Clutch\Laravel\Runtime\CancellationSignal::never(),
+        logger: app('log'),
+        redactor: app(Clutch\Laravel\Runtime\Redactor::class),
+    );
+
+    return $context->scope($callback);
+}

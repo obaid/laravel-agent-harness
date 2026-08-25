@@ -6,7 +6,11 @@ namespace Clutch\Laravel\Policies;
 
 use Clutch\Laravel\Enums\PermissionMode;
 use Clutch\Laravel\Runtime\RunContext;
+use Clutch\Laravel\Tools\GuardedTool;
+use Clutch\Laravel\Tools\ToolExecutionLedger;
 use Laravel\Ai\Contracts\Approvable;
+use Laravel\Ai\Contracts\Tool;
+use Laravel\Ai\Tools\ToolNameResolver;
 
 /**
  * Applies a session's permission mode to an agent's tool list.
@@ -25,7 +29,10 @@ use Laravel\Ai\Contracts\Approvable;
  */
 class PolicyAwareTools
 {
-    public function __construct(protected PolicyEngine $policy) {}
+    public function __construct(
+        protected PolicyEngine $policy,
+        protected ToolExecutionLedger $ledger,
+    ) {}
 
     /**
      * Filter and annotate tools according to the current session's policy.
@@ -61,7 +68,7 @@ class PolicyAwareTools
 
             // An allow list, when present, is absolute: anything not named on
             // it is withheld regardless of how safe the policy thinks it is.
-            if ($active !== [] && ! in_array($name, $active, true)) {
+            if ($active !== [] && ! $this->named($name, $active)) {
                 $context->log('info', 'A tool was withheld because the session names an allow list.', [
                     'tool' => $name,
                 ]);
@@ -69,7 +76,7 @@ class PolicyAwareTools
                 continue;
             }
 
-            if (in_array($name, $inactive, true)) {
+            if ($this->named($name, $inactive)) {
                 $context->log('info', 'A tool was withheld because the session denies it.', [
                     'tool' => $name,
                 ]);
@@ -96,25 +103,45 @@ class PolicyAwareTools
                 $tool = $tool->requireApproval($decision->reason);
             }
 
-            $allowed[] = $tool;
+            // Wrapping last, so the ledger, the loop guard, the deadline and
+            // the spill policy all sit in front of the call. Without this the
+            // ledger is a table nothing ever writes to.
+            $allowed[] = $tool instanceof Tool
+                ? GuardedTool::wrap($tool, $this->ledger)
+                : $tool;
         }
 
         return $allowed;
     }
 
     /**
-     * The name the policy engine knows a tool by.
+     * The name a tool is known by everywhere else.
      *
-     * Mirrors Laravel AI's own convention: the snake-cased short class name,
-     * unless the tool names itself.
+     * Deliberately Laravel AI's own resolution rather than a variant of it, so
+     * one name reaches the model, the approval record, the event history and
+     * the ledger. Configuration may still be written in snake_case; the policy
+     * engine accepts either.
      */
     public function nameOf(object $tool): string
     {
-        if (method_exists($tool, 'name')) {
-            return (string) $tool->name();
+        if ($tool instanceof GuardedTool) {
+            $tool = $tool->inner();
         }
 
-        return \Illuminate\Support\Str::snake(class_basename($tool));
+        return $tool instanceof Tool
+            ? ToolNameResolver::resolve($tool)
+            : class_basename($tool);
+    }
+
+    /**
+     * Match a tool name against a list written in either spelling.
+     *
+     * @param  array<int, string>  $names
+     */
+    protected function named(string $name, array $names): bool
+    {
+        return in_array($name, $names, true)
+            || in_array(\Illuminate\Support\Str::snake($name), $names, true);
     }
 
     /**

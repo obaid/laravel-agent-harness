@@ -713,6 +713,12 @@ final class PublishArticle implements Tool, IdempotentTool
 
 The key and a pending row are committed before the tool runs, so a worker that dies halfway through still leaves evidence behind. A repeat invocation returns the stored result instead of firing the side effect again.
 
+This only applies to tools passed through `Clutch::policy()`. Laravel AI runs
+tools inside its own loop, so the wrapper that `policy()` adds is the only place
+the ledger, the loop guards, the deadlines and the spill policy can sit. An
+agent that returns its tools directly gets none of them, which is why
+`make:clutch-agent` generates the call.
+
 A tool with no idempotency contract still gets recorded for audit, but the harness makes no duplicate suppression claim for it. Only you know what counts as the same action.
 
 ## Events

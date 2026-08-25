@@ -75,7 +75,7 @@ it('withholds everything outside a session allow list', function (): void {
         ->apply([new SearchWeb, new DraftEmail, new PublishArticle]));
 
     expect($tools)->toHaveCount(1)
-        ->and($tools[0])->toBeInstanceOf(SearchWeb::class);
+        ->and($tools[0]->inner())->toBeInstanceOf(SearchWeb::class);
 });
 
 it('withholds exactly what a session denies', function (): void {
@@ -90,7 +90,7 @@ it('withholds exactly what a session denies', function (): void {
         ->apply([new SearchWeb, new DraftEmail, new PublishArticle]));
 
     expect($tools)->toHaveCount(2)
-        ->and(collect($tools)->map(fn ($t) => $t::class)->all())
+        ->and(collect($tools)->map(fn ($t) => $t->inner()::class)->all())
         ->not->toContain(PublishArticle::class);
 });
 

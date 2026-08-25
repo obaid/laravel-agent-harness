@@ -5,6 +5,38 @@ Notable changes to `obaid/laravel-clutch`.
 This project follows [Semantic Versioning](https://semver.org). Before v1.0, a
 breaking change needs a changelog entry and an upgrade note.
 
+## v0.2.0 - 2026-08-25
+
+Makes the tool protections actually run.
+
+The ledger, the loop guards, the tool deadlines and the spill policy were all
+built, tested in isolation, and never invoked. Laravel AI executes tools inside
+its own generation loop, so there was no point at which Clutch saw a call, and
+nothing ever wrote to the tool execution table. In practice that meant
+`IdempotentTool` did nothing unless an application called the ledger by hand,
+and the guarantee that a retried tool does not repeat its side effect was not
+true of an ordinary agent run.
+
+Tools passed through `Clutch::policy()` are now wrapped in a decorator that puts
+the ledger, the guards and the spill policy in front of the call. The wrapper is
+transparent: it forwards the name, description and schema, and stays approvable
+when the tool it wraps is, because Laravel AI decides whether a call pauses by
+checking that interface.
+
+Tool naming is also reconciled. The policy engine used a snake_cased name while
+Laravel AI, approvals and events used the class basename, so configuration keys
+and real tool names disagreed. One name is now used everywhere, and
+configuration accepts either spelling.
+
+Loop guard counters are keyed by run, so a long-lived queue worker cannot carry
+one run's repetition into the next.
+
+Upgrading: agents must pass their tools through `Clutch::policy()` for any of
+this to apply, which `make:clutch-agent` has always generated. Tool names in
+`clutch.permissions.tools` may stay snake_case.
+
+Found by building a CRM demo and watching an approved discount fire twice.
+
 ## v0.1.2 - 2026-08-25
 
 Fixes the event stream so the obvious client works.
