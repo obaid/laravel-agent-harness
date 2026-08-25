@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Console;
+namespace Clutch\Laravel\Console;
 
-use AgentHarness\Laravel\Models\Approval;
-use AgentHarness\Laravel\Models\Artifact;
-use AgentHarness\Laravel\Models\Run;
+use Clutch\Laravel\Models\Approval;
+use Clutch\Laravel\Models\Artifact;
+use Clutch\Laravel\Models\Run;
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
 
 class RunCommand extends Command
 {
-    protected $signature = 'harness:run {run : The run identifier}';
+    protected $signature = 'clutch:run {run : The run identifier}';
 
-    protected $description = 'Inspect a single harness run';
+    protected $description = 'Inspect a single Clutch run';
 
     public function handle(): int
     {

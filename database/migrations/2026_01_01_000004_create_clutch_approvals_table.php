@@ -10,7 +10,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('agent_harness_approvals', function (Blueprint $table): void {
+        Schema::create('clutch_approvals', function (Blueprint $table): void {
             $table->string('id', 40)->primary();
             $table->string('session_id', 40);
             $table->string('run_id', 40);
@@ -38,7 +38,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreign('run_id')
-                ->references('id')->on('agent_harness_runs')
+                ->references('id')->on('clutch_runs')
                 ->cascadeOnDelete();
 
             $table->unique(['run_id', 'tool_call_id'], 'ah_approvals_call_unique');
@@ -49,6 +49,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('agent_harness_approvals');
+        Schema::dropIfExists('clutch_approvals');
     }
 };

@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Sandbox;
+namespace Clutch\Laravel\Sandbox;
 
-use AgentHarness\Laravel\Contracts\SandboxProvider;
-use AgentHarness\Laravel\Data\Sandbox\SandboxCheckpoint;
-use AgentHarness\Laravel\Data\Sandbox\SandboxConfig;
-use AgentHarness\Laravel\Data\Sandbox\SandboxSession;
+use Clutch\Laravel\Contracts\SandboxProvider;
+use Clutch\Laravel\Data\Sandbox\SandboxCheckpoint;
+use Clutch\Laravel\Data\Sandbox\SandboxConfig;
+use Clutch\Laravel\Data\Sandbox\SandboxSession;
 
 /**
  * The provider used by host-resident application agents.

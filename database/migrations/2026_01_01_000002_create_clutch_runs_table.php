@@ -10,7 +10,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('agent_harness_runs', function (Blueprint $table): void {
+        Schema::create('clutch_runs', function (Blueprint $table): void {
             $table->string('id', 40)->primary();
             $table->string('session_id', 40);
 
@@ -52,7 +52,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreign('session_id')
-                ->references('id')->on('agent_harness_sessions')
+                ->references('id')->on('clutch_sessions')
                 ->cascadeOnDelete();
 
             $table->index(['session_id', 'created_at'], 'ah_runs_session_index');
@@ -63,19 +63,19 @@ return new class extends Migration
             $table->unique(['session_id', 'idempotency_key'], 'ah_runs_idempotency_unique');
         });
 
-        Schema::table('agent_harness_sessions', function (Blueprint $table): void {
+        Schema::table('clutch_sessions', function (Blueprint $table): void {
             $table->foreign('active_run_id')
-                ->references('id')->on('agent_harness_runs')
+                ->references('id')->on('clutch_runs')
                 ->nullOnDelete();
         });
     }
 
     public function down(): void
     {
-        Schema::table('agent_harness_sessions', function (Blueprint $table): void {
+        Schema::table('clutch_sessions', function (Blueprint $table): void {
             $table->dropForeign(['active_run_id']);
         });
 
-        Schema::dropIfExists('agent_harness_runs');
+        Schema::dropIfExists('clutch_runs');
     }
 };

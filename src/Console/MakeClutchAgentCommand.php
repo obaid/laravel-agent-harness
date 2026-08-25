@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Console;
+namespace Clutch\Laravel\Console;
 
 use Illuminate\Console\GeneratorCommand;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -14,18 +14,18 @@ use Symfony\Component\Console\Attribute\AsCommand;
  * without which Laravel AI never persists the conversation — and durable
  * sessions and cross-process approvals both depend on it.
  */
-#[AsCommand(name: 'make:harness-agent')]
-class MakeHarnessAgentCommand extends GeneratorCommand
+#[AsCommand(name: 'make:clutch-agent')]
+class MakeClutchAgentCommand extends GeneratorCommand
 {
-    protected $name = 'make:harness-agent';
+    protected $name = 'make:clutch-agent';
 
-    protected $description = 'Create a Laravel AI agent ready for durable harness sessions';
+    protected $description = 'Create a Laravel AI agent ready for durable Clutch sessions';
 
     protected $type = 'Agent';
 
     protected function getStub(): string
     {
-        return __DIR__.'/../../stubs/harness-agent.stub';
+        return __DIR__.'/../../stubs/clutch-agent.stub';
     }
 
     protected function getDefaultNamespace($rootNamespace): string

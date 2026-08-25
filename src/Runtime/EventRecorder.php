@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Runtime;
+namespace Clutch\Laravel\Runtime;
 
-use AgentHarness\Laravel\Checkpoints\CheckpointStore;
-use AgentHarness\Laravel\Contracts\DriverEventSink;
-use AgentHarness\Laravel\Data\DriverCheckpoint;
-use AgentHarness\Laravel\Enums\EventType;
-use AgentHarness\Laravel\Models\Run;
-use AgentHarness\Laravel\Models\RunEvent;
-use AgentHarness\Laravel\Models\Session;
 use Closure;
+use Clutch\Laravel\Checkpoints\CheckpointStore;
+use Clutch\Laravel\Contracts\DriverEventSink;
+use Clutch\Laravel\Data\DriverCheckpoint;
+use Clutch\Laravel\Enums\EventType;
+use Clutch\Laravel\Models\Run;
+use Clutch\Laravel\Models\RunEvent;
+use Clutch\Laravel\Models\Session;
 use Illuminate\Support\Collection;
 
 /**

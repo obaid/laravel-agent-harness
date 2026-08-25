@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Models;
+namespace Clutch\Laravel\Models;
 
-use AgentHarness\Laravel\Enums\ApprovalStatus;
-use AgentHarness\Laravel\Models\Concerns\HasHarnessId;
-use AgentHarness\Laravel\Support\Id;
+use Clutch\Laravel\Enums\ApprovalStatus;
+use Clutch\Laravel\Models\Concerns\HasHarnessId;
+use Clutch\Laravel\Support\Id;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -36,7 +36,7 @@ class Approval extends Model
 {
     use HasHarnessId;
 
-    protected $table = 'agent_harness_approvals';
+    protected $table = 'clutch_approvals';
 
     protected $guarded = [];
 

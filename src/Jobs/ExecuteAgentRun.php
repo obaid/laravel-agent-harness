@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Jobs;
+namespace Clutch\Laravel\Jobs;
 
-use AgentHarness\Laravel\Enums\FailureCategory;
-use AgentHarness\Laravel\Exceptions\LeaseUnavailable;
-use AgentHarness\Laravel\Exceptions\RunNotFound;
-use AgentHarness\Laravel\Models\Run;
-use AgentHarness\Laravel\Runtime\RunCoordinator;
-use AgentHarness\Laravel\ValueObjects\NormalizedFailure;
+use Clutch\Laravel\Enums\FailureCategory;
+use Clutch\Laravel\Exceptions\LeaseUnavailable;
+use Clutch\Laravel\Exceptions\RunNotFound;
+use Clutch\Laravel\Models\Run;
+use Clutch\Laravel\Runtime\RunCoordinator;
+use Clutch\Laravel\ValueObjects\NormalizedFailure;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -46,11 +46,11 @@ class ExecuteAgentRun implements ShouldQueue
         } catch (LeaseUnavailable) {
             // Another worker owns this session right now. Exiting is correct:
             // whoever holds the lease is already doing this work.
-            $logger->info('Harness run skipped; the session lease is held elsewhere.', [
+            $logger->info('Clutch run skipped; the session lease is held elsewhere.', [
                 'run_id' => $this->runId,
             ]);
         } catch (RunNotFound) {
-            $logger->info('Harness run no longer exists; nothing to execute.', ['run_id' => $this->runId]);
+            $logger->info('Clutch run no longer exists; nothing to execute.', ['run_id' => $this->runId]);
         }
     }
 
@@ -67,14 +67,14 @@ class ExecuteAgentRun implements ShouldQueue
 
         app(RunCoordinator::class)->transitionRun(
             $run,
-            \AgentHarness\Laravel\Enums\RunStatus::Failed,
+            \Clutch\Laravel\Enums\RunStatus::Failed,
             [
                 'failure_category' => FailureCategory::WorkerLost,
                 'failure_message' => 'The worker processing this run stopped unexpectedly.',
                 'failure_exception_class' => $e::class,
                 'finished_at' => now(),
             ],
-            \AgentHarness\Laravel\Enums\EventType::RunFailed,
+            \Clutch\Laravel\Enums\EventType::RunFailed,
             NormalizedFailure::fromThrowable($e, FailureCategory::WorkerLost)->toArray(),
             clearActiveRun: true,
         );
@@ -85,6 +85,6 @@ class ExecuteAgentRun implements ShouldQueue
      */
     public function tags(): array
     {
-        return ['agent-harness', "run:{$this->runId}"];
+        return ['clutch', "run:{$this->runId}"];
     }
 }

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use AgentHarness\Laravel\Budgets\BudgetManager;
-use AgentHarness\Laravel\Budgets\CostEstimator;
-use AgentHarness\Laravel\ValueObjects\BudgetUsage;
-use AgentHarness\Laravel\ValueObjects\RunBudget;
+use Clutch\Laravel\Budgets\BudgetManager;
+use Clutch\Laravel\Budgets\CostEstimator;
+use Clutch\Laravel\ValueObjects\BudgetUsage;
+use Clutch\Laravel\ValueObjects\RunBudget;
 
 it('keeps the more restrictive limit when merging budgets', function (): void {
     $merged = (new RunBudget(maxSteps: 50, maxTokens: 100_000))

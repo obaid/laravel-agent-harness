@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Exceptions;
+namespace Clutch\Laravel\Exceptions;
 
-final class RunNotFound extends HarnessException
+final class RunNotFound extends ClutchException
 {
     public function errorCode(): string
     {
@@ -18,6 +18,6 @@ final class RunNotFound extends HarnessException
 
     public static function withId(string $id): self
     {
-        return new self("No harness run was found with the identifier [{$id}].");
+        return new self("No Clutch run was found with the identifier [{$id}].");
     }
 }

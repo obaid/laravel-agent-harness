@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Support;
+namespace Clutch\Laravel\Support;
 
 use Illuminate\Support\Str;
 use InvalidArgumentException;

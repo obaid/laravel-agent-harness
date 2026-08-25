@@ -10,38 +10,38 @@ declare(strict_types=1);
  * production.
  */
 
-use AgentHarness\Laravel\Data\DriverCheckpoint;
-use AgentHarness\Laravel\Enums\RunStatus;
-use AgentHarness\Laravel\Exceptions\HarnessCapabilityUnsupported;
-use AgentHarness\Laravel\Exceptions\SessionBusy;
-use AgentHarness\Laravel\Facades\Harness;
-use AgentHarness\Laravel\Jobs\ExecuteAgentRun;
-use AgentHarness\Laravel\Models\Approval;
-use AgentHarness\Laravel\Models\Run;
-use AgentHarness\Laravel\Models\RunEvent;
-use AgentHarness\Laravel\Runtime\DriverRegistry;
-use AgentHarness\Laravel\Runtime\HarnessResult;
-use AgentHarness\Laravel\Tests\Fixtures\Agents\ResearchAgent;
-use AgentHarness\Laravel\ValueObjects\DriverCapabilities;
+use Clutch\Laravel\Data\DriverCheckpoint;
+use Clutch\Laravel\Enums\RunStatus;
+use Clutch\Laravel\Exceptions\CapabilityUnsupported;
+use Clutch\Laravel\Exceptions\SessionBusy;
+use Clutch\Laravel\Facades\Clutch;
+use Clutch\Laravel\Jobs\ExecuteAgentRun;
+use Clutch\Laravel\Models\Approval;
+use Clutch\Laravel\Models\Run;
+use Clutch\Laravel\Models\RunEvent;
+use Clutch\Laravel\Runtime\ClutchResult;
+use Clutch\Laravel\Runtime\DriverRegistry;
+use Clutch\Laravel\Tests\Fixtures\Agents\ResearchAgent;
+use Clutch\Laravel\ValueObjects\DriverCapabilities;
 
 beforeEach(function (): void {
     $this->owner = $this->user();
-    $this->harness = Harness::fake([HarnessResult::text('Done.')]);
+    $this->clutch = Clutch::fake([ClutchResult::text('Done.')]);
 });
 
 it('1. allows a session at most one active run', function (): void {
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
 
-    Harness::coordinator()->createRun($session, 'First.');
+    Clutch::coordinator()->createRun($session, 'First.');
 
-    expect(fn () => Harness::coordinator()->createRun($session->refresh(), 'Second.'))
+    expect(fn () => Clutch::coordinator()->createRun($session->refresh(), 'Second.'))
         ->toThrow(SessionBusy::class);
 
     expect(Run::query()->active()->count())->toBe(1);
 });
 
 it('2. gives a run exactly one immutable terminal state', function (): void {
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
     $run = $session->prompt('Do it.')->run;
 
     expect($run->status)->toBe(RunStatus::Completed);
@@ -55,7 +55,7 @@ it('2. gives a run exactly one immutable terminal state', function (): void {
 });
 
 it('3. never repeats or decreases an event sequence within a run', function (): void {
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
     $run = $session->prompt('Do it.')->run;
 
     $sequences = $run->events()->pluck('sequence');
@@ -66,7 +66,7 @@ it('3. never repeats or decreases an event sequence within a run', function (): 
 });
 
 it('4. records a matching event for every lifecycle transition', function (): void {
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
     $run = $session->queue('Do it.');
 
     $types = $run->refresh()->events()->pluck('type')->map->value;
@@ -78,7 +78,7 @@ it('4. records a matching event for every lifecycle transition', function (): vo
 });
 
 it('5. never exposes a terminal event without terminal state and result', function (): void {
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
     $run = $session->prompt('Do it.')->run;
 
     $terminal = $run->events()->where('type', 'run.completed')->firstOrFail();
@@ -94,12 +94,12 @@ it('5. never exposes a terminal event without terminal state and result', functi
 });
 
 it('6. cannot execute a resolved approval twice', function (): void {
-    $this->harness->script([
-        HarnessResult::awaitingApproval(tool: 'publish_article', arguments: ['id' => 1]),
-        HarnessResult::text('Published.'),
+    $this->clutch->script([
+        ClutchResult::awaitingApproval(tool: 'publish_article', arguments: ['id' => 1]),
+        ClutchResult::text('Published.'),
     ]);
 
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
     $paused = $session->prompt('Publish it.');
     $approval = Approval::query()->firstOrFail();
 
@@ -111,8 +111,8 @@ it('6. cannot execute a resolved approval twice', function (): void {
 });
 
 it('7. does not duplicate execution when a job is delivered twice', function (): void {
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
-    $run = Harness::coordinator()->createRun($session, 'Do it once.');
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
+    $run = Clutch::coordinator()->createRun($session, 'Do it once.');
 
     $job = new ExecuteAgentRun($run->id, $run->version);
 
@@ -124,25 +124,25 @@ it('7. does not duplicate execution when a job is delivered twice', function ():
 
     expect($run->refresh()->last_event_sequence)->toBe($sequenceAfterFirst)
         ->and($run->status)->toBe(RunStatus::Completed)
-        ->and($this->harness->driver()->prompts)->toHaveCount(1);
+        ->and($this->clutch->driver()->prompts)->toHaveCount(1);
 });
 
 it('8. prevents a new step once cancellation is observed', function (): void {
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
-    $run = Harness::coordinator()->createRun($session, 'A long job.');
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
+    $run = Clutch::coordinator()->createRun($session, 'A long job.');
 
     $run->cancel('Stop.');
 
     // Executing a cancelled run does nothing further.
-    Harness::coordinator()->executeRun($run->id);
+    Clutch::coordinator()->executeRun($run->id);
 
     expect($run->refresh()->status)->toBe(RunStatus::Cancelled)
-        ->and($this->harness->driver()->prompts)->toHaveCount(0);
+        ->and($this->clutch->driver()->prompts)->toHaveCount(0);
 });
 
 it('9. refuses to checkpoint a payload containing a configured secret', function (): void {
-    $store = app(AgentHarness\Laravel\Checkpoints\CheckpointStore::class);
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $store = app(\Clutch\Laravel\Checkpoints\CheckpointStore::class);
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
 
     $leaky = new DriverCheckpoint(
         driver: 'fake',
@@ -157,7 +157,7 @@ it('9. refuses to checkpoint a payload containing a configured secret', function
 it('10. does not let a driver silently claim an unsupported capability', function (): void {
     $registry = app(DriverRegistry::class);
 
-    $registry->extend('no-streaming', fn (): AgentHarness\Laravel\Contracts\HarnessDriver => new class extends AgentHarness\Laravel\Drivers\FakeDriver
+    $registry->extend('no-streaming', fn (): \Clutch\Laravel\Contracts\ClutchDriver => new class extends \Clutch\Laravel\Drivers\FakeDriver
     {
         public function name(): string
         {
@@ -173,11 +173,11 @@ it('10. does not let a driver silently claim an unsupported capability', functio
     $driver = $registry->driver('no-streaming');
 
     expect(fn () => $registry->requireCapability($driver, 'streaming'))
-        ->toThrow(HarnessCapabilityUnsupported::class);
+        ->toThrow(CapabilityUnsupported::class);
 });
 
 it('11. never reuses a terminal run record when retrying', function (): void {
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
     $original = $session->prompt('Do it.')->run;
 
     $retry = $original->retry();
@@ -191,15 +191,15 @@ it('11. never reuses a terminal run record when retrying', function (): void {
 it('12. keeps one participant from reaching another participant\'s session', function (): void {
     $stranger = $this->user('stranger@example.com');
 
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
     $run = $session->prompt('Do it.')->run;
 
     expect(fn () => $session->authorizeFor($stranger))
-        ->toThrow(AgentHarness\Laravel\Exceptions\RunNotAuthorized::class);
+        ->toThrow(\Clutch\Laravel\Exceptions\RunNotAuthorized::class);
 
-    expect(fn () => Harness::run($run->id)->authorizeFor($stranger))
-        ->toThrow(AgentHarness\Laravel\Exceptions\RunNotAuthorized::class);
+    expect(fn () => Clutch::run($run->id)->authorizeFor($stranger))
+        ->toThrow(\Clutch\Laravel\Exceptions\RunNotAuthorized::class);
 
-    expect(Harness::sessionsFor($stranger))->toBeEmpty()
-        ->and(Harness::sessionsFor($this->owner))->toHaveCount(1);
+    expect(Clutch::sessionsFor($stranger))->toBeEmpty()
+        ->and(Clutch::sessionsFor($this->owner))->toHaveCount(1);
 });

@@ -7,15 +7,15 @@ declare(strict_types=1);
  * here, verbatim, so the documentation cannot drift away from the package.
  */
 
-use AgentHarness\Laravel\Artifacts\Artifact;
-use AgentHarness\Laravel\Enums\PermissionMode;
-use AgentHarness\Laravel\Events\HarnessEventRecorded;
-use AgentHarness\Laravel\Facades\Harness;
-use AgentHarness\Laravel\Runtime\HarnessResult;
-use AgentHarness\Laravel\Tests\Fixtures\Agents\PublishingAgent;
-use AgentHarness\Laravel\Tests\Fixtures\Agents\ResearchAgent;
-use AgentHarness\Laravel\Tests\Fixtures\Agents\ScoringAgent;
-use AgentHarness\Laravel\ValueObjects\RunBudget;
+use Clutch\Laravel\Artifacts\Artifact;
+use Clutch\Laravel\Enums\PermissionMode;
+use Clutch\Laravel\Events\ClutchEventRecorded;
+use Clutch\Laravel\Facades\Clutch;
+use Clutch\Laravel\Runtime\ClutchResult;
+use Clutch\Laravel\Tests\Fixtures\Agents\PublishingAgent;
+use Clutch\Laravel\Tests\Fixtures\Agents\ResearchAgent;
+use Clutch\Laravel\Tests\Fixtures\Agents\ScoringAgent;
+use Clutch\Laravel\ValueObjects\RunBudget;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
@@ -25,11 +25,11 @@ beforeEach(function (): void {
 });
 
 it('runs the quick start', function (): void {
-    Harness::fake([
-        'Research our three closest competitors' => HarnessResult::text('Lead with onboarding speed.'),
+    Clutch::fake([
+        'Research our three closest competitors' => ClutchResult::text('Lead with onboarding speed.'),
     ]);
 
-    $session = Harness::agent(ResearchAgent::class)
+    $session = Clutch::agent(ResearchAgent::class)
         ->for($this->owner)
         ->name('Competitor research')
         ->create();
@@ -54,15 +54,15 @@ it('runs the quick start', function (): void {
 });
 
 it('continues a session', function (): void {
-    Harness::fake([
-        HarnessResult::text('The wedge is onboarding.'),
-        HarnessResult::text('Here is the one-page memo.'),
+    Clutch::fake([
+        ClutchResult::text('The wedge is onboarding.'),
+        ClutchResult::text('Here is the one-page memo.'),
     ]);
 
-    $created = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $created = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
     $created->prompt('Research the competitors.');
 
-    $session = Harness::session($created->id)->authorizeFor($this->owner);
+    $session = Clutch::session($created->id)->authorizeFor($this->owner);
 
     $result = $session->prompt('Turn the recommendation into a one-page strategy memo.');
 
@@ -70,9 +70,9 @@ it('continues a session', function (): void {
 });
 
 it('queues a background run', function (): void {
-    $fake = Harness::fake([HarnessResult::text('Report ready.')]);
+    $fake = Clutch::fake([ClutchResult::text('Report ready.')]);
 
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
 
     $run = $session->queue('Analyze every page on our website and produce a content gap report.');
 
@@ -83,9 +83,9 @@ it('queues a background run', function (): void {
 });
 
 it('configures queue behavior per session', function (): void {
-    Harness::fake();
+    Clutch::fake();
 
-    $session = Harness::agent(ResearchAgent::class)
+    $session = Clutch::agent(ResearchAgent::class)
         ->for($this->owner)
         ->onConnection('redis')
         ->onQueue('agents')
@@ -98,12 +98,12 @@ it('configures queue behavior per session', function (): void {
 });
 
 it('streams from a controller', function (): void {
-    Harness::fake([HarnessResult::text('Making progress now.')]);
+    Clutch::fake([ClutchResult::text('Making progress now.')]);
 
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
 
     // Exactly the README's controller body, returned from a real route.
-    Route::get('/_test/stream/{session}', fn (string $sessionId) => Harness::session($sessionId)
+    Route::get('/_test/stream/{session}', fn (string $sessionId) => Clutch::session($sessionId)
         ->stream('Create the report and explain your progress.')
         ->usingVercelDataProtocol());
 
@@ -118,11 +118,11 @@ it('streams from a controller', function (): void {
 });
 
 it('streams the harness event envelope when no protocol is requested', function (): void {
-    Harness::fake([HarnessResult::text('Progress.')]);
+    Clutch::fake([ClutchResult::text('Progress.')]);
 
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
 
-    Route::get('/_test/raw-stream/{session}', fn (string $sessionId) => Harness::session($sessionId)
+    Route::get('/_test/raw-stream/{session}', fn (string $sessionId) => Clutch::session($sessionId)
         ->stream('Create the report.'));
 
     $response = $this->get("/_test/raw-stream/{$session->id}");
@@ -134,17 +134,17 @@ it('streams the harness event envelope when no protocol is requested', function 
 });
 
 it('approves and rejects through the run', function (): void {
-    $fake = Harness::fake([
-        HarnessResult::awaitingApproval(tool: 'publish_article', arguments: ['article_id' => 123]),
-        HarnessResult::text('Published.'),
+    $fake = Clutch::fake([
+        ClutchResult::awaitingApproval(tool: 'publish_article', arguments: ['article_id' => 123]),
+        ClutchResult::text('Published.'),
     ]);
 
-    $session = Harness::agent(PublishingAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(PublishingAgent::class)->for($this->owner)->create();
     $paused = $session->prompt('Publish the approved article.');
 
     $approvalId = $paused->pendingApprovals->first()->id;
 
-    $run = Harness::run($paused->run->id)->authorizeFor($this->owner);
+    $run = Clutch::run($paused->run->id)->authorizeFor($this->owner);
 
     $run->approve(
         approvalId: $approvalId,
@@ -155,15 +155,15 @@ it('approves and rejects through the run', function (): void {
 });
 
 it('rejects an action', function (): void {
-    $fake = Harness::fake([
-        HarnessResult::awaitingApproval(tool: 'publish_article', arguments: ['article_id' => 123]),
-        HarnessResult::text('Understood.'),
+    $fake = Clutch::fake([
+        ClutchResult::awaitingApproval(tool: 'publish_article', arguments: ['article_id' => 123]),
+        ClutchResult::text('Understood.'),
     ]);
 
-    $session = Harness::agent(PublishingAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(PublishingAgent::class)->for($this->owner)->create();
     $paused = $session->prompt('Publish the draft.');
 
-    $run = Harness::run($paused->run->id)->authorizeFor($this->owner);
+    $run = Clutch::run($paused->run->id)->authorizeFor($this->owner);
 
     $run->reject(
         approvalId: $paused->pendingApprovals->first()->id,
@@ -174,9 +174,9 @@ it('rejects an action', function (): void {
 });
 
 it('configures a session-level permission policy', function (): void {
-    Harness::fake();
+    Clutch::fake();
 
-    $session = Harness::agent(PublishingAgent::class)
+    $session = Clutch::agent(PublishingAgent::class)
         ->for($this->owner)
         ->permissions(PermissionMode::ApproveSensitive)
         ->create();
@@ -185,9 +185,9 @@ it('configures a session-level permission policy', function (): void {
 });
 
 it('constrains a session with a budget', function (): void {
-    Harness::fake();
+    Clutch::fake();
 
-    $session = Harness::agent(ResearchAgent::class)
+    $session = Clutch::agent(ResearchAgent::class)
         ->for($this->owner)
         ->budget(new RunBudget(
             maxSteps: 40,
@@ -203,12 +203,12 @@ it('constrains a session with a budget', function (): void {
 });
 
 it('cancels a run', function (): void {
-    $fake = Harness::fake([HarnessResult::text('ok')]);
+    $fake = Clutch::fake([ClutchResult::text('ok')]);
 
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
-    $created = Harness::coordinator()->createRun($session, 'A long job.');
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
+    $created = Clutch::coordinator()->createRun($session, 'A long job.');
 
-    $run = Harness::run($created->id)->authorizeFor($this->owner);
+    $run = Clutch::run($created->id)->authorizeFor($this->owner);
 
     $run->cancel(reason: 'The request is no longer needed.');
 
@@ -218,8 +218,8 @@ it('cancels a run', function (): void {
 it('attaches an artifact from a tool', function (): void {
     Storage::fake('s3');
 
-    Harness::fake([
-        HarnessResult::text('Report attached.')->withArtifact(
+    Clutch::fake([
+        ClutchResult::text('Report attached.')->withArtifact(
             Artifact::fromStorage(disk: 's3', path: 'reports/content-gap-2026-08-24.pdf')
                 ->name('Content gap report')
                 ->mimeType('application/pdf')
@@ -229,7 +229,7 @@ it('attaches an artifact from a tool', function (): void {
 
     Storage::disk('s3')->put('reports/content-gap-2026-08-24.pdf', '%PDF-1.4');
 
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
     $result = $session->prompt('Produce the report.');
 
     expect($result->artifacts)->toHaveCount(1)
@@ -237,17 +237,17 @@ it('attaches an artifact from a tool', function (): void {
         ->and($result->artifacts->first()->metadata)->toBe(['pages' => 18]);
 
     // Retrieve them from a run as well.
-    expect(Harness::run($result->run->id)->artifacts)->toHaveCount(1);
+    expect(Clutch::run($result->run->id)->artifacts)->toHaveCount(1);
 });
 
 it('lets applications listen without depending on the transport', function (): void {
-    Event::fake([HarnessEventRecorded::class]);
+    Event::fake([ClutchEventRecorded::class]);
 
-    Harness::fake([HarnessResult::text('Done.')]);
+    Clutch::fake([ClutchResult::text('Done.')]);
 
-    Harness::agent(ResearchAgent::class)->for($this->owner)->create()->prompt('Do it.');
+    Clutch::agent(ResearchAgent::class)->for($this->owner)->create()->prompt('Do it.');
 
-    Event::assertDispatched(HarnessEventRecorded::class, function (HarnessEventRecorded $event): bool {
+    Event::assertDispatched(ClutchEventRecorded::class, function (ClutchEventRecorded $event): bool {
         return $event->type === 'run.completed'
             && $event->envelope['run_id'] === $event->runId
             && isset($event->envelope['sequence'], $event->envelope['occurred_at'], $event->envelope['payload']);
@@ -255,11 +255,11 @@ it('lets applications listen without depending on the transport', function (): v
 });
 
 it('returns structured output', function (): void {
-    Harness::fake([
-        HarnessResult::structured(['score' => 87, 'notes' => 'Strong, but thin on evidence.']),
+    Clutch::fake([
+        ClutchResult::structured(['score' => 87, 'notes' => 'Strong, but thin on evidence.']),
     ]);
 
-    $session = Harness::agent(ScoringAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ScoringAgent::class)->for($this->owner)->create();
 
     $result = $session->prompt('Score this draft against our content rubric.');
 
@@ -270,9 +270,9 @@ it('returns structured output', function (): void {
 });
 
 it('selects a driver explicitly', function (): void {
-    Harness::fake();
+    Clutch::fake();
 
-    $session = Harness::agent(ResearchAgent::class)
+    $session = Clutch::agent(ResearchAgent::class)
         ->driver('laravel-ai')
         ->for($this->owner)
         ->create();
@@ -281,9 +281,9 @@ it('selects a driver explicitly', function (): void {
 });
 
 it('builds a runtime session with a workspace and sandbox', function (): void {
-    Harness::fake();
+    Clutch::fake();
 
-    $session = Harness::runtime('fake')
+    $session = Clutch::runtime('fake')
         ->for($this->owner)
         ->workspace('acme/website')
         ->sandbox('e2b')
@@ -295,35 +295,35 @@ it('builds a runtime session with a workspace and sandbox', function (): void {
 });
 
 it('fakes the entire harness with the documented assertions', function (): void {
-    Harness::fake([
-        'Draft a brief' => HarnessResult::text('The proposed brief...'),
+    Clutch::fake([
+        'Draft a brief' => ClutchResult::text('The proposed brief...'),
     ]);
 
-    $session = Harness::agent(ResearchAgent::class)
+    $session = Clutch::agent(ResearchAgent::class)
         ->for($this->owner)
         ->create();
 
     $session->queue('Draft a brief');
 
-    Harness::assertSessionCreated(ResearchAgent::class);
-    Harness::assertRunQueued('Draft a brief');
-    Harness::assertRunCompleted();
-    Harness::assertNothingAwaitingApproval();
+    Clutch::assertSessionCreated(ResearchAgent::class);
+    Clutch::assertRunQueued('Draft a brief');
+    Clutch::assertRunCompleted();
+    Clutch::assertNothingAwaitingApproval();
 });
 
 it('tests a paused run', function (): void {
-    Harness::fake([
-        HarnessResult::awaitingApproval(
+    Clutch::fake([
+        ClutchResult::awaitingApproval(
             tool: 'publish_article',
             arguments: ['article_id' => 123],
         ),
     ]);
 
-    $session = Harness::agent(PublishingAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(PublishingAgent::class)->for($this->owner)->create();
 
     $run = $session->queue('Publish the approved article.');
 
-    Harness::assertApprovalRequested('publish_article');
+    Clutch::assertApprovalRequested('publish_article');
 
     expect($run->refresh()->status->value)->toBe('awaiting_approval');
 });

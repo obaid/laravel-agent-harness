@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Data;
+namespace Clutch\Laravel\Data;
 
-use AgentHarness\Laravel\Enums\PermissionMode;
+use Clutch\Laravel\Enums\PermissionMode;
 
 /**
  * The harness context handed to a tool immediately before it executes.

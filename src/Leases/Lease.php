@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Leases;
+namespace Clutch\Laravel\Leases;
 
 /**
  * A held claim on a session's execution slot.

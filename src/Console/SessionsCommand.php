@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Console;
+namespace Clutch\Laravel\Console;
 
-use AgentHarness\Laravel\Models\Session;
+use Clutch\Laravel\Models\Session;
 use Illuminate\Console\Command;
 
 class SessionsCommand extends Command
 {
-    protected $signature = 'harness:sessions
+    protected $signature = 'clutch:sessions
         {--status=* : Only show sessions with these statuses}
         {--agent= : Only show sessions for this agent class}
         {--limit=25 : How many sessions to show}';
 
-    protected $description = 'List harness sessions';
+    protected $description = 'List Clutch sessions';
 
     public function handle(): int
     {
@@ -26,7 +26,7 @@ class SessionsCommand extends Command
             ->get();
 
         if ($sessions->isEmpty()) {
-            $this->components->info('No harness sessions found.');
+            $this->components->info('No Clutch sessions found.');
 
             return self::SUCCESS;
         }

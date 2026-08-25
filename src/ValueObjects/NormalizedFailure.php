@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\ValueObjects;
+namespace Clutch\Laravel\ValueObjects;
 
-use AgentHarness\Laravel\Enums\FailureCategory;
+use Clutch\Laravel\Enums\FailureCategory;
 use Illuminate\Contracts\Support\Arrayable;
 use Throwable;
 
@@ -46,10 +46,10 @@ final readonly class NormalizedFailure implements Arrayable
     public static function classify(Throwable $e): FailureCategory
     {
         return match (true) {
-            $e instanceof \AgentHarness\Laravel\Exceptions\BudgetExceeded => FailureCategory::BudgetExceeded,
-            $e instanceof \AgentHarness\Laravel\Exceptions\CheckpointIncompatible => FailureCategory::CheckpointError,
-            $e instanceof \AgentHarness\Laravel\Exceptions\RunNotAuthorized => FailureCategory::AuthorizationError,
-            $e instanceof \AgentHarness\Laravel\Exceptions\DriverFailure => FailureCategory::DriverError,
+            $e instanceof \Clutch\Laravel\Exceptions\BudgetExceeded => FailureCategory::BudgetExceeded,
+            $e instanceof \Clutch\Laravel\Exceptions\CheckpointIncompatible => FailureCategory::CheckpointError,
+            $e instanceof \Clutch\Laravel\Exceptions\RunNotAuthorized => FailureCategory::AuthorizationError,
+            $e instanceof \Clutch\Laravel\Exceptions\DriverFailure => FailureCategory::DriverError,
             $e instanceof \Illuminate\Auth\Access\AuthorizationException => FailureCategory::AuthorizationError,
             $e instanceof \Illuminate\Validation\ValidationException => FailureCategory::ValidationError,
             $e instanceof \InvalidArgumentException => FailureCategory::ValidationError,
@@ -94,7 +94,7 @@ final readonly class NormalizedFailure implements Arrayable
     private static function safeMessage(Throwable $e, FailureCategory $category): string
     {
         // Harness exceptions are written to be user-safe by contract.
-        if ($e instanceof \AgentHarness\Laravel\Exceptions\HarnessException) {
+        if ($e instanceof \Clutch\Laravel\Exceptions\ClutchException) {
             return $e->getMessage();
         }
 

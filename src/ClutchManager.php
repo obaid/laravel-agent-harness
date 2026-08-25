@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel;
+namespace Clutch\Laravel;
 
-use AgentHarness\Laravel\Exceptions\RunNotFound;
-use AgentHarness\Laravel\Exceptions\SessionNotFound;
-use AgentHarness\Laravel\Models\Approval;
-use AgentHarness\Laravel\Models\Run;
-use AgentHarness\Laravel\Models\Session;
-use AgentHarness\Laravel\Policies\PolicyAwareTools;
-use AgentHarness\Laravel\Runtime\DriverRegistry;
-use AgentHarness\Laravel\Runtime\RunCoordinator;
-use AgentHarness\Laravel\Runtime\SessionBuilder;
-use AgentHarness\Laravel\Testing\HarnessFake;
 use Closure;
+use Clutch\Laravel\Exceptions\RunNotFound;
+use Clutch\Laravel\Exceptions\SessionNotFound;
+use Clutch\Laravel\Models\Approval;
+use Clutch\Laravel\Models\Run;
+use Clutch\Laravel\Models\Session;
+use Clutch\Laravel\Policies\PolicyAwareTools;
+use Clutch\Laravel\Runtime\DriverRegistry;
+use Clutch\Laravel\Runtime\RunCoordinator;
+use Clutch\Laravel\Runtime\SessionBuilder;
+use Clutch\Laravel\Testing\ClutchFake;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Support\Collection;
 
@@ -24,7 +24,7 @@ use Illuminate\Support\Collection;
  * Creates and loads sessions and runs, and hands lifecycle work to the
  * coordinator. It deliberately owns no state transitions of its own.
  */
-class HarnessManager
+class ClutchManager
 {
     public function __construct(
         protected Container $container,
@@ -149,7 +149,7 @@ class HarnessManager
     /**
      * Register a custom driver.
      *
-     * @param  Closure(Container): Contracts\HarnessDriver  $creator
+     * @param  Closure(Container): Contracts\ClutchDriver  $creator
      */
     public function extend(string $name, Closure $creator): static
     {
@@ -171,9 +171,9 @@ class HarnessManager
      *
      * @param  array<array-key, mixed>  $responses
      */
-    public function fake(array $responses = []): HarnessFake
+    public function fake(array $responses = []): ClutchFake
     {
-        $fake = new HarnessFake($this->container, $this->coordinator, $this->drivers, $responses);
+        $fake = new ClutchFake($this->container, $this->coordinator, $this->drivers, $responses);
 
         $fake->bind();
 

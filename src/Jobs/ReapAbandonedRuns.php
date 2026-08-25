@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Jobs;
+namespace Clutch\Laravel\Jobs;
 
-use AgentHarness\Laravel\Enums\EventType;
-use AgentHarness\Laravel\Enums\FailureCategory;
-use AgentHarness\Laravel\Enums\RunStatus;
-use AgentHarness\Laravel\Leases\LeaseManager;
-use AgentHarness\Laravel\Models\Run;
-use AgentHarness\Laravel\Runtime\RunCoordinator;
+use Clutch\Laravel\Enums\EventType;
+use Clutch\Laravel\Enums\FailureCategory;
+use Clutch\Laravel\Enums\RunStatus;
+use Clutch\Laravel\Leases\LeaseManager;
+use Clutch\Laravel\Models\Run;
+use Clutch\Laravel\Runtime\RunCoordinator;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -55,7 +55,7 @@ class ReapAbandonedRuns implements ShouldQueue
             // holding it here stops that worker's replacement racing us.
             $lease = $leases->acquire($run->session_id);
 
-            if (! $lease instanceof \AgentHarness\Laravel\Leases\Lease) {
+            if (! $lease instanceof \Clutch\Laravel\Leases\Lease) {
                 continue;
             }
 
@@ -67,7 +67,7 @@ class ReapAbandonedRuns implements ShouldQueue
                     continue;
                 }
 
-                $logger->warning('Harness reaped an abandoned run.', [
+                $logger->warning('Clutch reaped an abandoned run.', [
                     'run_id' => $run->id,
                     'session_id' => $run->session_id,
                 ]);

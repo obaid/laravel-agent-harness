@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Policies;
+namespace Clutch\Laravel\Policies;
 
-use AgentHarness\Laravel\Contracts\SensitiveTool;
-use AgentHarness\Laravel\Data\ToolInvocation;
-use AgentHarness\Laravel\Enums\PermissionMode;
-use AgentHarness\Laravel\Enums\ToolSensitivity;
 use Closure;
+use Clutch\Laravel\Contracts\SensitiveTool;
+use Clutch\Laravel\Data\ToolInvocation;
+use Clutch\Laravel\Enums\PermissionMode;
+use Clutch\Laravel\Enums\ToolSensitivity;
 
 /**
  * Combines permission mode, tool sensitivity, and application callbacks.

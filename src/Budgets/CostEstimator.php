@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Budgets;
+namespace Clutch\Laravel\Budgets;
 
-use AgentHarness\Laravel\ValueObjects\BudgetUsage;
+use Clutch\Laravel\ValueObjects\BudgetUsage;
 
 /**
  * Turns token usage into an estimated dollar cost.

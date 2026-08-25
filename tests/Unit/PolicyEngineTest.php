@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-use AgentHarness\Laravel\Contracts\SensitiveTool;
-use AgentHarness\Laravel\Data\ToolInvocation;
-use AgentHarness\Laravel\Enums\PermissionMode;
-use AgentHarness\Laravel\Enums\ToolSensitivity;
-use AgentHarness\Laravel\Policies\PolicyDecision;
-use AgentHarness\Laravel\Policies\PolicyEngine;
+use Clutch\Laravel\Contracts\SensitiveTool;
+use Clutch\Laravel\Data\ToolInvocation;
+use Clutch\Laravel\Enums\PermissionMode;
+use Clutch\Laravel\Enums\ToolSensitivity;
+use Clutch\Laravel\Policies\PolicyDecision;
+use Clutch\Laravel\Policies\PolicyEngine;
 
 function invocation(string $tool, PermissionMode $mode): ToolInvocation
 {

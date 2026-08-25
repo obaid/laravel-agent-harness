@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Exceptions;
+namespace Clutch\Laravel\Exceptions;
 
-final class SessionNotFound extends HarnessException
+final class SessionNotFound extends ClutchException
 {
     public function errorCode(): string
     {
@@ -18,6 +18,6 @@ final class SessionNotFound extends HarnessException
 
     public static function withId(string $id): self
     {
-        return new self("No harness session was found with the identifier [{$id}].");
+        return new self("No Clutch session was found with the identifier [{$id}].");
     }
 }

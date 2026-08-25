@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Tests\Fixtures\Agents;
+namespace Clutch\Laravel\Tests\Fixtures\Agents;
 
-use AgentHarness\Laravel\Tests\Fixtures\Tools\PublishArticle;
+use Clutch\Laravel\Tests\Fixtures\Tools\PublishArticle;
 use Laravel\Ai\Concerns\RemembersConversations;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\HasTools;

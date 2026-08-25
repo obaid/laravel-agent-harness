@@ -1,6 +1,6 @@
 # Changelog
 
-Notable changes to `obaid/laravel-agent-harness`.
+Notable changes to `obaid/laravel-clutch`.
 
 This project follows [Semantic Versioning](https://semver.org). Before v1.0, a
 breaking change needs a changelog entry and an upgrade note.
@@ -9,7 +9,7 @@ breaking change needs a changelog entry and an upgrade note.
 
 First release: a durable runtime around Laravel AI agents.
 
-Sessions and runs arrive through `Harness::agent()`. A session holds many runs
+Sessions and runs arrive through `Clutch::agent()`. A session holds many runs
 in sequence and exactly one active run at a time.
 
 Every run leaves an append only event history with per run sequence numbers,
@@ -37,12 +37,12 @@ detected and retried as a new attempt, leaving the terminal record alone.
 
 The bundled `laravel-ai` driver runs ordinary Laravel AI agents, translating
 their stream events, conversations, approvals, usage, and structured output. The
-`HarnessDriver` contract and its reusable test suite let a new runtime be added
+`ClutchDriver` contract and its reusable test suite let a new runtime be added
 without touching the core.
 
 Also included: participant scoped HTTP routes for sessions, runs, event streams,
-approvals, and artifacts; the commands `harness:sessions`, `harness:run`,
-`harness:events`, `harness:retry`, `harness:cancel`, `harness:reap`,
-`harness:prune`, and `make:harness-agent`; and `Harness::fake()`, which swaps in
+approvals, and artifacts; the commands `clutch:sessions`, `clutch:run`,
+`clutch:events`, `clutch:retry`, `clutch:cancel`, `clutch:reap`,
+`clutch:prune`, and `make:clutch-agent`; and `Clutch::fake()`, which swaps in
 a deterministic driver and runs queued work inline while leaving the coordinator,
 state machine, event store, approvals, and routes real.

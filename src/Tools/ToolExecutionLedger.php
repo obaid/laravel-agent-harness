@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Tools;
+namespace Clutch\Laravel\Tools;
 
-use AgentHarness\Laravel\Contracts\IdempotentTool;
-use AgentHarness\Laravel\Data\ToolInvocation;
-use AgentHarness\Laravel\Models\ToolExecution;
-use AgentHarness\Laravel\Support\Id;
 use Closure;
+use Clutch\Laravel\Contracts\IdempotentTool;
+use Clutch\Laravel\Data\ToolInvocation;
+use Clutch\Laravel\Models\ToolExecution;
+use Clutch\Laravel\Support\Id;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Throwable;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Tests\Fixtures\Agents;
+namespace Clutch\Laravel\Tests\Fixtures\Agents;
 
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Promptable;

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Tests;
+namespace Clutch\Laravel\Tests;
 
-use AgentHarness\Laravel\AgentHarnessServiceProvider;
-use AgentHarness\Laravel\Runtime\RunContext;
-use AgentHarness\Laravel\Tests\Fixtures\User;
+use Clutch\Laravel\ClutchServiceProvider;
+use Clutch\Laravel\Runtime\RunContext;
+use Clutch\Laravel\Tests\Fixtures\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Ai\AiServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
@@ -33,7 +33,7 @@ abstract class TestCase extends Orchestra
     {
         return [
             AiServiceProvider::class,
-            AgentHarnessServiceProvider::class,
+            ClutchServiceProvider::class,
         ];
     }
 
@@ -69,17 +69,17 @@ abstract class TestCase extends Orchestra
         $app['config']->set('database.redis.default.host', env('REDIS_HOST', '127.0.0.1'));
         $app['config']->set('database.redis.cache.host', env('REDIS_HOST', '127.0.0.1'));
         $app['config']->set('queue.default', 'sync');
-        $app['config']->set('agent-harness.events.broadcast', false);
-        $app['config']->set('agent-harness.default_driver', 'fake');
+        $app['config']->set('clutch.events.broadcast', false);
+        $app['config']->set('clutch.default_driver', 'fake');
 
         // mergeConfigFrom is a shallow merge, so the whole drivers map has to
         // be declared here rather than only the key being added.
-        $app['config']->set('agent-harness.drivers', [
+        $app['config']->set('clutch.drivers', [
             'fake' => [
-                'driver' => \AgentHarness\Laravel\Drivers\FakeDriver::class,
+                'driver' => \Clutch\Laravel\Drivers\FakeDriver::class,
             ],
             'laravel-ai' => [
-                'driver' => \AgentHarness\Laravel\Drivers\LaravelAi\LaravelAiDriver::class,
+                'driver' => \Clutch\Laravel\Drivers\LaravelAi\LaravelAiDriver::class,
             ],
         ]);
 

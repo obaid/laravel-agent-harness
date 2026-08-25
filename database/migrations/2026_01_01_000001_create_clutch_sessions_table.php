@@ -10,7 +10,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('agent_harness_sessions', function (Blueprint $table): void {
+        Schema::create('clutch_sessions', function (Blueprint $table): void {
             $table->string('id', 40)->primary();
 
             $table->string('tenant_type')->nullable();
@@ -54,6 +54,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('agent_harness_sessions');
+        Schema::dropIfExists('clutch_sessions');
     }
 };

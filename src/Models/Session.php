@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Models;
+namespace Clutch\Laravel\Models;
 
-use AgentHarness\Laravel\Enums\PermissionMode;
-use AgentHarness\Laravel\Enums\SessionStatus;
-use AgentHarness\Laravel\Exceptions\RunNotAuthorized;
-use AgentHarness\Laravel\Models\Concerns\HasHarnessId;
-use AgentHarness\Laravel\Runtime\HarnessResult;
-use AgentHarness\Laravel\Runtime\RunCoordinator;
-use AgentHarness\Laravel\Streaming\StreamedRun;
-use AgentHarness\Laravel\Support\Id;
-use AgentHarness\Laravel\ValueObjects\RunBudget;
+use Clutch\Laravel\Enums\PermissionMode;
+use Clutch\Laravel\Enums\SessionStatus;
+use Clutch\Laravel\Exceptions\RunNotAuthorized;
+use Clutch\Laravel\Models\Concerns\HasHarnessId;
+use Clutch\Laravel\Runtime\ClutchResult;
+use Clutch\Laravel\Runtime\RunCoordinator;
+use Clutch\Laravel\Streaming\StreamedRun;
+use Clutch\Laravel\Support\Id;
+use Clutch\Laravel\ValueObjects\RunBudget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -57,7 +57,7 @@ class Session extends Model
     use HasHarnessId;
     use SoftDeletes;
 
-    protected $table = 'agent_harness_sessions';
+    protected $table = 'clutch_sessions';
 
     protected $guarded = [];
 
@@ -157,7 +157,7 @@ class Session extends Model
      * @param  array<int, mixed>  $attachments
      * @param  array<string, mixed>  $options
      */
-    public function prompt(string $prompt, array $attachments = [], array $options = []): HarnessResult
+    public function prompt(string $prompt, array $attachments = [], array $options = []): ClutchResult
     {
         return $this->coordinator()->promptNow($this, $prompt, $attachments, $options);
     }

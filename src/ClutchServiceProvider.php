@@ -2,47 +2,47 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel;
+namespace Clutch\Laravel;
 
-use AgentHarness\Laravel\Approvals\ApprovalBroker;
-use AgentHarness\Laravel\Artifacts\ArtifactManager;
-use AgentHarness\Laravel\Budgets\BudgetManager;
-use AgentHarness\Laravel\Budgets\CostEstimator;
-use AgentHarness\Laravel\Checkpoints\CheckpointStore;
-use AgentHarness\Laravel\Console\CancelRunCommand;
-use AgentHarness\Laravel\Console\EventsCommand;
-use AgentHarness\Laravel\Console\MakeHarnessAgentCommand;
-use AgentHarness\Laravel\Console\PruneCommand;
-use AgentHarness\Laravel\Console\ReapCommand;
-use AgentHarness\Laravel\Console\RetryRunCommand;
-use AgentHarness\Laravel\Console\RunCommand;
-use AgentHarness\Laravel\Console\SessionsCommand;
-use AgentHarness\Laravel\Contracts\SandboxProvider;
-use AgentHarness\Laravel\Drivers\LaravelAi\EventTranslator;
-use AgentHarness\Laravel\Jobs\ExpireApprovals;
-use AgentHarness\Laravel\Jobs\PruneAgentHarnessRecords;
-use AgentHarness\Laravel\Jobs\ReapAbandonedRuns;
-use AgentHarness\Laravel\Leases\LeaseManager;
-use AgentHarness\Laravel\Policies\PolicyAwareTools;
-use AgentHarness\Laravel\Policies\PolicyEngine;
-use AgentHarness\Laravel\Runtime\DriverRegistry;
-use AgentHarness\Laravel\Runtime\EventStore;
-use AgentHarness\Laravel\Runtime\Redactor;
-use AgentHarness\Laravel\Runtime\RunCoordinator;
-use AgentHarness\Laravel\Sandbox\NullSandboxProvider;
-use AgentHarness\Laravel\Streaming\EventStreamResponse;
-use AgentHarness\Laravel\Tools\ToolExecutionLedger;
-use AgentHarness\Laravel\ValueObjects\RunBudget;
+use Clutch\Laravel\Approvals\ApprovalBroker;
+use Clutch\Laravel\Artifacts\ArtifactManager;
+use Clutch\Laravel\Budgets\BudgetManager;
+use Clutch\Laravel\Budgets\CostEstimator;
+use Clutch\Laravel\Checkpoints\CheckpointStore;
+use Clutch\Laravel\Console\CancelRunCommand;
+use Clutch\Laravel\Console\EventsCommand;
+use Clutch\Laravel\Console\MakeClutchAgentCommand;
+use Clutch\Laravel\Console\PruneCommand;
+use Clutch\Laravel\Console\ReapCommand;
+use Clutch\Laravel\Console\RetryRunCommand;
+use Clutch\Laravel\Console\RunCommand;
+use Clutch\Laravel\Console\SessionsCommand;
+use Clutch\Laravel\Contracts\SandboxProvider;
+use Clutch\Laravel\Drivers\LaravelAi\EventTranslator;
+use Clutch\Laravel\Jobs\ExpireApprovals;
+use Clutch\Laravel\Jobs\PruneClutchRecords;
+use Clutch\Laravel\Jobs\ReapAbandonedRuns;
+use Clutch\Laravel\Leases\LeaseManager;
+use Clutch\Laravel\Policies\PolicyAwareTools;
+use Clutch\Laravel\Policies\PolicyEngine;
+use Clutch\Laravel\Runtime\DriverRegistry;
+use Clutch\Laravel\Runtime\EventStore;
+use Clutch\Laravel\Runtime\Redactor;
+use Clutch\Laravel\Runtime\RunCoordinator;
+use Clutch\Laravel\Sandbox\NullSandboxProvider;
+use Clutch\Laravel\Streaming\EventStreamResponse;
+use Clutch\Laravel\Tools\ToolExecutionLedger;
+use Clutch\Laravel\ValueObjects\RunBudget;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
-class AgentHarnessServiceProvider extends ServiceProvider
+class ClutchServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->mergeConfigFrom(__DIR__.'/../config/agent-harness.php', 'agent-harness');
+        $this->mergeConfigFrom(__DIR__.'/../config/clutch.php', 'clutch');
 
         $this->registerSupportServices();
         $this->registerRuntime();
@@ -62,28 +62,28 @@ class AgentHarnessServiceProvider extends ServiceProvider
     protected function registerSupportServices(): void
     {
         $this->app->singleton(Redactor::class, fn ($app): Redactor => new Redactor(
-            sensitiveKeys: (array) $app['config']->get('agent-harness.events.redact', []),
-            toolSerializers: (array) $app['config']->get('agent-harness.events.serializers', []),
+            sensitiveKeys: (array) $app['config']->get('clutch.events.redact', []),
+            toolSerializers: (array) $app['config']->get('clutch.events.serializers', []),
         ));
 
         $this->app->singleton(CostEstimator::class, fn ($app): CostEstimator => new CostEstimator(
-            (array) $app['config']->get('agent-harness.pricing', []),
+            (array) $app['config']->get('clutch.pricing', []),
         ));
 
         $this->app->singleton(BudgetManager::class, fn ($app): BudgetManager => new BudgetManager(
-            RunBudget::fromArray((array) $app['config']->get('agent-harness.budgets', [])),
+            RunBudget::fromArray((array) $app['config']->get('clutch.budgets', [])),
         ));
 
         $this->app->singleton(LeaseManager::class, fn ($app): LeaseManager => new LeaseManager(
             cache: $app['cache'],
-            store: $app['config']->get('agent-harness.leases.store'),
-            ttlSeconds: (int) $app['config']->get('agent-harness.leases.ttl_seconds', 60),
-            heartbeatSeconds: (int) $app['config']->get('agent-harness.leases.heartbeat_seconds', 15),
+            store: $app['config']->get('clutch.leases.store'),
+            ttlSeconds: (int) $app['config']->get('clutch.leases.ttl_seconds', 60),
+            heartbeatSeconds: (int) $app['config']->get('clutch.leases.heartbeat_seconds', 15),
         ));
 
         $this->app->singleton(PolicyEngine::class, fn ($app): PolicyEngine => new PolicyEngine(
-            sensitivityMap: (array) $app['config']->get('agent-harness.permissions.tools', []),
-            alwaysAllow: (array) $app['config']->get('agent-harness.permissions.always_allow', []),
+            sensitivityMap: (array) $app['config']->get('clutch.permissions.tools', []),
+            alwaysAllow: (array) $app['config']->get('clutch.permissions.always_allow', []),
         ));
 
         $this->app->singleton(PolicyAwareTools::class);
@@ -96,14 +96,14 @@ class AgentHarnessServiceProvider extends ServiceProvider
         $this->app->singleton(EventStore::class, fn ($app): EventStore => new EventStore(
             connection: $app['db']->connection(),
             redactor: $app->make(Redactor::class),
-            persistDeltas: (bool) $app['config']->get('agent-harness.events.persist_deltas', true),
+            persistDeltas: (bool) $app['config']->get('clutch.events.persist_deltas', true),
         ));
 
         $this->app->singleton(ApprovalBroker::class, fn ($app): ApprovalBroker => new ApprovalBroker(
             connection: $app['db']->connection(),
             events: $app->make(EventStore::class),
-            expiresAfterSeconds: $app['config']->get('agent-harness.approvals.expires_after') !== null
-                ? (int) $app['config']->get('agent-harness.approvals.expires_after')
+            expiresAfterSeconds: $app['config']->get('clutch.approvals.expires_after') !== null
+                ? (int) $app['config']->get('clutch.approvals.expires_after')
                 : null,
         ));
 
@@ -111,9 +111,9 @@ class AgentHarnessServiceProvider extends ServiceProvider
 
         $this->app->singleton(EventStreamResponse::class, fn ($app): EventStreamResponse => new EventStreamResponse(
             events: $app->make(EventStore::class),
-            pollIntervalMicroseconds: (int) $app['config']->get('agent-harness.streaming.poll_interval_ms', 250) * 1000,
-            keepAliveSeconds: (int) $app['config']->get('agent-harness.streaming.keep_alive_seconds', 15),
-            maxDurationSeconds: (int) $app['config']->get('agent-harness.streaming.max_duration_seconds', 300),
+            pollIntervalMicroseconds: (int) $app['config']->get('clutch.streaming.poll_interval_ms', 250) * 1000,
+            keepAliveSeconds: (int) $app['config']->get('clutch.streaming.keep_alive_seconds', 15),
+            maxDurationSeconds: (int) $app['config']->get('clutch.streaming.max_duration_seconds', 300),
         ));
     }
 
@@ -121,8 +121,8 @@ class AgentHarnessServiceProvider extends ServiceProvider
     {
         $this->app->singleton(DriverRegistry::class, fn ($app): DriverRegistry => new DriverRegistry(
             container: $app,
-            config: (array) $app['config']->get('agent-harness.drivers', []),
-            default: (string) $app['config']->get('agent-harness.default_driver', 'laravel-ai'),
+            config: (array) $app['config']->get('clutch.drivers', []),
+            default: (string) $app['config']->get('clutch.default_driver', 'laravel-ai'),
         ));
 
         $this->app->singleton(RunCoordinator::class, fn ($app): RunCoordinator => new RunCoordinator(
@@ -138,13 +138,13 @@ class AgentHarnessServiceProvider extends ServiceProvider
             logger: $app['log'],
         ));
 
-        $this->app->singleton(HarnessManager::class, fn ($app): HarnessManager => new HarnessManager(
+        $this->app->singleton(ClutchManager::class, fn ($app): ClutchManager => new ClutchManager(
             container: $app,
             coordinator: $app->make(RunCoordinator::class),
             drivers: $app->make(DriverRegistry::class),
         ));
 
-        $this->app->alias(HarnessManager::class, 'agent-harness');
+        $this->app->alias(ClutchManager::class, 'clutch');
     }
 
     protected function publishesResources(): void
@@ -154,26 +154,26 @@ class AgentHarnessServiceProvider extends ServiceProvider
         }
 
         $this->publishes([
-            __DIR__.'/../config/agent-harness.php' => config_path('agent-harness.php'),
-        ], ['agent-harness', 'agent-harness-config']);
+            __DIR__.'/../config/clutch.php' => config_path('clutch.php'),
+        ], ['clutch', 'clutch-config']);
 
         $this->publishes([
             __DIR__.'/../database/migrations' => database_path('migrations'),
-        ], ['agent-harness', 'agent-harness-migrations']);
+        ], ['clutch', 'clutch-migrations']);
     }
 
     protected function registerRoutes(): void
     {
-        if ($this->app['config']->get('agent-harness.routes.enabled', true) !== true) {
+        if ($this->app['config']->get('clutch.routes.enabled', true) !== true) {
             return;
         }
 
         Route::group([
-            'prefix' => $this->app['config']->get('agent-harness.routes.prefix', 'api/agent-harness'),
-            'middleware' => $this->app['config']->get('agent-harness.routes.middleware', ['api']),
-            'as' => 'agent-harness.',
+            'prefix' => $this->app['config']->get('clutch.routes.prefix', 'api/clutch'),
+            'middleware' => $this->app['config']->get('clutch.routes.middleware', ['api']),
+            'as' => 'clutch.',
         ], function (): void {
-            $this->loadRoutesFrom(__DIR__.'/../routes/agent-harness.php');
+            $this->loadRoutesFrom(__DIR__.'/../routes/clutch.php');
         });
     }
 
@@ -185,7 +185,7 @@ class AgentHarnessServiceProvider extends ServiceProvider
      */
     protected function registerBroadcastChannels(): void
     {
-        if ($this->app['config']->get('agent-harness.events.broadcast', true) !== true) {
+        if ($this->app['config']->get('clutch.events.broadcast', true) !== true) {
             return;
         }
 
@@ -193,13 +193,13 @@ class AgentHarnessServiceProvider extends ServiceProvider
             return;
         }
 
-        Broadcast::channel('agent-harness.run.{runId}', function ($user, string $runId): bool {
+        Broadcast::channel('clutch.run.{runId}', function ($user, string $runId): bool {
             $run = Models\Run::query()->with('session')->find($runId);
 
             return $run?->session?->belongsToParticipant($user) ?? false;
         });
 
-        Broadcast::channel('agent-harness.session.{sessionId}', function ($user, string $sessionId): bool {
+        Broadcast::channel('clutch.session.{sessionId}', function ($user, string $sessionId): bool {
             return Models\Session::query()->find($sessionId)?->belongsToParticipant($user) ?? false;
         });
     }
@@ -218,7 +218,7 @@ class AgentHarnessServiceProvider extends ServiceProvider
             RetryRunCommand::class,
             PruneCommand::class,
             ReapCommand::class,
-            MakeHarnessAgentCommand::class,
+            MakeClutchAgentCommand::class,
         ]);
     }
 
@@ -235,17 +235,17 @@ class AgentHarnessServiceProvider extends ServiceProvider
             $config = $this->app['config'];
 
             $schedule->job(new ReapAbandonedRuns(
-                staleAfterSeconds: (int) $config->get('agent-harness.recovery.stale_after_seconds', 300),
-                retry: (bool) $config->get('agent-harness.recovery.retry_abandoned', true),
-            ))->everyFiveMinutes()->name('agent-harness:reap')->withoutOverlapping();
+                staleAfterSeconds: (int) $config->get('clutch.recovery.stale_after_seconds', 300),
+                retry: (bool) $config->get('clutch.recovery.retry_abandoned', true),
+            ))->everyFiveMinutes()->name('agent-clutch:reap')->withoutOverlapping();
 
-            if ($config->get('agent-harness.approvals.expires_after') !== null) {
+            if ($config->get('clutch.approvals.expires_after') !== null) {
                 $schedule->job(new ExpireApprovals)
-                    ->everyFiveMinutes()->name('agent-harness:expire-approvals')->withoutOverlapping();
+                    ->everyFiveMinutes()->name('agent-clutch:expire-approvals')->withoutOverlapping();
             }
 
-            $schedule->job(new PruneAgentHarnessRecords)
-                ->dailyAt('03:10')->name('agent-harness:prune')->withoutOverlapping();
+            $schedule->job(new PruneClutchRecords)
+                ->dailyAt('03:10')->name('agent-clutch:prune')->withoutOverlapping();
         });
     }
 }

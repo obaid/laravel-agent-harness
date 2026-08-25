@@ -2,26 +2,26 @@
 
 declare(strict_types=1);
 
-use AgentHarness\Laravel\Enums\ApprovalStatus;
-use AgentHarness\Laravel\Enums\FailureCategory;
-use AgentHarness\Laravel\Enums\RunStatus;
-use AgentHarness\Laravel\Facades\Harness;
-use AgentHarness\Laravel\Models\Approval;
-use AgentHarness\Laravel\Runtime\CancellationSignal;
-use AgentHarness\Laravel\Runtime\HarnessResult;
-use AgentHarness\Laravel\Tests\Fixtures\Agents\ResearchAgent;
-use AgentHarness\Laravel\ValueObjects\BudgetUsage;
-use AgentHarness\Laravel\ValueObjects\RunBudget;
+use Clutch\Laravel\Enums\ApprovalStatus;
+use Clutch\Laravel\Enums\FailureCategory;
+use Clutch\Laravel\Enums\RunStatus;
+use Clutch\Laravel\Facades\Clutch;
+use Clutch\Laravel\Models\Approval;
+use Clutch\Laravel\Runtime\CancellationSignal;
+use Clutch\Laravel\Runtime\ClutchResult;
+use Clutch\Laravel\Tests\Fixtures\Agents\ResearchAgent;
+use Clutch\Laravel\ValueObjects\BudgetUsage;
+use Clutch\Laravel\ValueObjects\RunBudget;
 
 beforeEach(function (): void {
     $this->owner = $this->user();
-    $this->harness = Harness::fake([HarnessResult::text('All done.')]);
+    $this->clutch = Clutch::fake([ClutchResult::text('All done.')]);
 });
 
 it('cancels a queued run before it starts', function (): void {
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
 
-    $run = Harness::coordinator()->createRun($session, 'A long analysis.');
+    $run = Clutch::coordinator()->createRun($session, 'A long analysis.');
 
     $run->cancel('The request is no longer needed.');
 
@@ -37,11 +37,11 @@ it('cancels a queued run before it starts', function (): void {
 });
 
 it('stops a paused run and cancels its outstanding approvals', function (): void {
-    $this->harness->script([
-        HarnessResult::awaitingApproval(tool: 'publish_article', arguments: ['id' => 1]),
+    $this->clutch->script([
+        ClutchResult::awaitingApproval(tool: 'publish_article', arguments: ['id' => 1]),
     ]);
 
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
     $paused = $session->prompt('Publish it.');
 
     expect($paused->isAwaitingApproval())->toBeTrue();
@@ -53,8 +53,8 @@ it('stops a paused run and cancels its outstanding approvals', function (): void
 });
 
 it('records cancellation as a terminal event', function (): void {
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
-    $run = Harness::coordinator()->createRun($session, 'Something.');
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
+    $run = Clutch::coordinator()->createRun($session, 'Something.');
 
     $run->cancel('Changed my mind.');
 
@@ -86,17 +86,17 @@ it('re-reads durable cancellation state at each boundary', function (): void {
 });
 
 it('stops a run that has already exhausted its budget before starting a new attempt', function (): void {
-    $session = Harness::agent(ResearchAgent::class)
+    $session = Clutch::agent(ResearchAgent::class)
         ->for($this->owner)
         ->budget(new RunBudget(maxTokens: 100))
         ->create();
 
-    $run = Harness::coordinator()->createRun($session, 'Expensive work.');
+    $run = Clutch::coordinator()->createRun($session, 'Expensive work.');
 
     // Prior attempts already spent the budget.
     $run->forceFill(['usage' => (new BudgetUsage(promptTokens: 120))->toArray()])->save();
 
-    Harness::coordinator()->executeRun($run->id);
+    Clutch::coordinator()->executeRun($run->id);
 
     $run->refresh();
 
@@ -108,11 +108,11 @@ it('stops a run that has already exhausted its budget before starting a new atte
     expect($event->payload['limit'])->toBe('max_tokens')
         ->and($event->payload['max'])->toBe(100);
 
-    $this->harness->assertRunExceededBudget();
+    $this->clutch->assertRunExceededBudget();
 });
 
 it('carries usage across attempts so a retry cannot re-spend the budget', function (): void {
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
 
     $first = $session->prompt('Do the work.');
 
@@ -131,7 +131,7 @@ it('carries usage across attempts so a retry cannot re-spend the budget', functi
 });
 
 it('resets the budget on request', function (): void {
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
 
     $run = $session->prompt('Do the work.')->run;
     $run->forceFill([
@@ -146,7 +146,7 @@ it('resets the budget on request', function (): void {
 });
 
 it('never reopens a terminal run when retrying', function (): void {
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
 
     $original = $session->prompt('Do the work.')->run;
 

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Contracts;
+namespace Clutch\Laravel\Contracts;
 
-use AgentHarness\Laravel\Data\ToolInvocation;
+use Clutch\Laravel\Data\ToolInvocation;
 
 /**
  * A tool whose side effect must not be repeated when a run is retried.

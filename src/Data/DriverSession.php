@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Data;
+namespace Clutch\Laravel\Data;
 
 /**
  * The driver's live handle on a session.

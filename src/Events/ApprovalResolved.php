@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Events;
+namespace Clutch\Laravel\Events;
 
-use AgentHarness\Laravel\Models\Approval;
+use Clutch\Laravel\Models\Approval;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 

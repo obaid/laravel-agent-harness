@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Data\Sandbox;
+namespace Clutch\Laravel\Data\Sandbox;
 
 /**
  * A provider's live handle on a provisioned sandbox.

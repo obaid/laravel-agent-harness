@@ -61,10 +61,10 @@ class ContentAgent implements Agent, HasTools, RemembersConversationsContract
 ```php
 namespace App\Ai\Tools;
 
-use AgentHarness\Laravel\Contracts\IdempotentTool;
-use AgentHarness\Laravel\Contracts\SensitiveTool;
-use AgentHarness\Laravel\Data\ToolInvocation;
-use AgentHarness\Laravel\Enums\ToolSensitivity;
+use Clutch\Laravel\Contracts\IdempotentTool;
+use Clutch\Laravel\Contracts\SensitiveTool;
+use Clutch\Laravel\Data\ToolInvocation;
+use Clutch\Laravel\Enums\ToolSensitivity;
 use App\Models\Article;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Concerns\InteractsWithApprovals;
@@ -116,7 +116,7 @@ class PublishArticle implements Approvable, IdempotentTool, SensitiveTool, Tool
 
 ```php
 Route::post('/content/research', function (Request $request) {
-    $session = Harness::agent(ContentAgent::class)
+    $session = Clutch::agent(ContentAgent::class)
         ->for($request->user())
         ->tenant($request->user()->currentTeam)
         ->name("Blog post: {$request->topic}")
@@ -138,7 +138,7 @@ The HTTP request returns immediately. A queue worker picks the run up, and the a
 ```php
 // app/Providers/AppServiceProvider.php
 
-use AgentHarness\Laravel\Events\ApprovalRequested;
+use Clutch\Laravel\Events\ApprovalRequested;
 
 Event::listen(ApprovalRequested::class, function (ApprovalRequested $event) {
     $event->approval->session->participant?->notify(
@@ -152,7 +152,7 @@ Event::listen(ApprovalRequested::class, function (ApprovalRequested $event) {
 ```php
 Route::get('/approvals', function (Request $request) {
     return view('approvals.index', [
-        'approvals' => Harness::pendingApprovalsFor($request->user()),
+        'approvals' => Clutch::pendingApprovalsFor($request->user()),
     ]);
 });
 ```
@@ -165,7 +165,7 @@ Route::get('/approvals', function (Request $request) {
         <pre>{{ json_encode($approval->arguments, JSON_PRETTY_PRINT) }}</pre>
 
         <form method="POST"
-              action="/api/agent-harness/runs/{{ $approval->run_id }}/approvals/{{ $approval->id }}/approve">
+              action="/api/clutch/runs/{{ $approval->run_id }}/approvals/{{ $approval->id }}/approve">
             @csrf
             <input name="reason" placeholder="Why are you approving this?">
             <button>Approve</button>
@@ -179,13 +179,13 @@ The bundled endpoints authorize by participant, resolve idempotently, and re-que
 ```php
 Route::post('/approvals/{approval}', function (Request $request, string $approvalId) {
     $approval = Approval::findOrFail($approvalId);
-    $run = Harness::run($approval->run_id)->authorizeFor($request->user());
+    $run = Clutch::run($approval->run_id)->authorizeFor($request->user());
 
     $request->boolean('approved')
         ? $run->approve($approvalId, $request->reason, $request->user())
         : $run->reject($approvalId, $request->reason, $request->user());
 
-    Harness::coordinator()->resumeAfterApproval($run->refresh());
+    Clutch::coordinator()->resumeAfterApproval($run->refresh());
 
     return back();
 });
@@ -205,7 +205,7 @@ Two endpoints. Start the work, then stream it:
 
 ```php
 Route::post('/runs', function (Request $request) {
-    $session = Harness::session($request->session_id)->authorizeFor($request->user());
+    $session = Clutch::session($request->session_id)->authorizeFor($request->user());
 
     return ['run_id' => $session->queue($request->prompt)->id];
 });
@@ -214,7 +214,7 @@ Route::post('/runs', function (Request $request) {
 The event stream endpoint ships with the package:
 
 ```
-GET /api/agent-harness/runs/{run}/events?after={cursor}
+GET /api/clutch/runs/{run}/events?after={cursor}
 ```
 
 ### Client
@@ -226,7 +226,7 @@ function follow(runId, onEvent) {
   const seen = new Set()
 
   const source = new EventSource(
-    `/api/agent-harness/runs/${runId}/events?after=${cursor}`
+    `/api/clutch/runs/${runId}/events?after=${cursor}`
   )
 
   source.onmessage = (message) => {
@@ -273,7 +273,7 @@ Stream a synchronous run straight into `useChat`:
 
 ```php
 Route::post('/chat', function (Request $request) {
-    return Harness::session($request->session_id)
+    return Clutch::session($request->session_id)
         ->authorizeFor($request->user())
         ->stream($request->message)
         ->usingVercelDataProtocol();
@@ -289,7 +289,7 @@ The full durable event history is still behind it. The protocol is a view over t
 Scope a session to a team and the harness enforces it on every lookup, route, and broadcast channel:
 
 ```php
-$session = Harness::agent(SupportAgent::class)
+$session = Clutch::agent(SupportAgent::class)
     ->for($request->user())
     ->tenant($request->user()->currentTeam)
     ->create();
@@ -298,7 +298,7 @@ $session = Harness::agent(SupportAgent::class)
 Querying stays ordinary Eloquent:
 
 ```php
-use AgentHarness\Laravel\Models\Session;
+use Clutch\Laravel\Models\Session;
 
 $teamSessions = Session::query()
     ->forTenant($team)
@@ -311,13 +311,13 @@ Every packaged route authorizes against the session's participant, so a run belo
 
 ```php
 // Registered for you when broadcasting is on.
-Broadcast::channel('agent-harness.run.{runId}', fn ($user, $runId) => /* participant check */);
+Broadcast::channel('clutch.run.{runId}', fn ($user, $runId) => /* participant check */);
 ```
 
 Tenant scoped agents usually want tenant scoped tools. The ambient run context carries the scope so you do not have to thread it through constructors:
 
 ```php
-use AgentHarness\Laravel\Runtime\RunContext;
+use Clutch\Laravel\Runtime\RunContext;
 
 public function handle(Request $request): string
 {
@@ -336,7 +336,7 @@ public function handle(Request $request): string
 Tell the harness what your models cost:
 
 ```php
-// config/agent-harness.php
+// config/clutch.php
 'pricing' => [
     'anthropic:claude-sonnet-4-5' => ['input' => 3.00, 'output' => 15.00],
     'anthropic:claude-haiku-4-5'  => ['input' => 1.00, 'output' => 5.00],
@@ -347,7 +347,7 @@ Tell the harness what your models cost:
 Then set a budget per plan:
 
 ```php
-use AgentHarness\Laravel\ValueObjects\RunBudget;
+use Clutch\Laravel\ValueObjects\RunBudget;
 
 $budget = match ($user->plan) {
     'free' => new RunBudget(maxSteps: 10, maxTokens: 50_000, maxCostUsd: 0.25),
@@ -355,7 +355,7 @@ $budget = match ($user->plan) {
     default => new RunBudget(maxDurationSeconds: 1800),
 };
 
-$session = Harness::agent(ResearchAgent::class)
+$session = Clutch::agent(ResearchAgent::class)
     ->for($user)
     ->budget($budget)
     ->create();
@@ -378,12 +378,12 @@ A run that hits the ceiling stops at `budget_exceeded`, with an event naming the
 Bill from the same numbers:
 
 ```php
-Event::listen(HarnessEventRecorded::class, function ($event) {
+Event::listen(ClutchEventRecorded::class, function ($event) {
     if ($event->type !== 'run.completed') {
         return;
     }
 
-    $run = Harness::run($event->runId);
+    $run = Clutch::run($event->runId);
 
     $run->session->participant?->recordUsage(
         tokens: $run->usage()->totalTokens(),
@@ -434,7 +434,7 @@ The harness writes the key and a `pending` row before calling `handle()`, then u
 Inspect the ledger like any other table:
 
 ```php
-use AgentHarness\Laravel\Models\ToolExecution;
+use Clutch\Laravel\Models\ToolExecution;
 
 ToolExecution::query()
     ->where('tool_name', 'charge_customer')
@@ -454,7 +454,7 @@ A tool with no idempotency contract still gets recorded for audit, but the harne
 
 Schedule::call(function () {
     Team::query()->whereHas('subscription')->each(function (Team $team) {
-        $session = Harness::agent(ReportingAgent::class)
+        $session = Clutch::agent(ReportingAgent::class)
             ->for($team->owner)
             ->tenant($team)
             ->name("Weekly report: {$team->name}")
@@ -470,8 +470,8 @@ Schedule::call(function () {
 Have the tool attach the PDF:
 
 ```php
-use AgentHarness\Laravel\Artifacts\Artifact;
-use AgentHarness\Laravel\Runtime\RunContext;
+use Clutch\Laravel\Artifacts\Artifact;
+use Clutch\Laravel\Runtime\RunContext;
 
 public function handle(Request $request): Stringable|string
 {
@@ -493,16 +493,16 @@ Then hand it to the customer:
 ```php
 Route::get('/reports/{artifact}', function (Request $request, string $artifactId) {
     // The packaged route already authorizes and prefers a temporary URL.
-    return redirect("/api/agent-harness/artifacts/{$artifactId}");
+    return redirect("/api/clutch/artifacts/{$artifactId}");
 });
 ```
 
 These are registered for you, but they are worth knowing about:
 
 ```
-agent-harness:reap               every five minutes   recovers runs whose worker vanished
-agent-harness:expire-approvals   every five minutes   closes stale approval windows
-agent-harness:prune              daily at 03:10       applies retention windows
+agent-clutch:reap               every five minutes   recovers runs whose worker vanished
+agent-clutch:expire-approvals   every five minutes   closes stale approval windows
+agent-clutch:prune              daily at 03:10       applies retention windows
 ```
 
 ---
@@ -557,16 +557,16 @@ Run::query()
 ## 8. Testing the whole thing
 
 ```php
-use AgentHarness\Laravel\Artifacts\Artifact;
-use AgentHarness\Laravel\Facades\Harness;
-use AgentHarness\Laravel\Runtime\HarnessResult;
+use Clutch\Laravel\Artifacts\Artifact;
+use Clutch\Laravel\Facades\Clutch;
+use Clutch\Laravel\Runtime\ClutchResult;
 
 it('drafts a post and waits for a human before publishing', function () {
-    $fake = Harness::fake([
-        HarnessResult::text('Here is the draft.')
+    $fake = Clutch::fake([
+        ClutchResult::text('Here is the draft.')
             ->withToolCall('search_web', ['q' => 'competitor pricing'], '12 results'),
 
-        HarnessResult::awaitingApproval(
+        ClutchResult::awaitingApproval(
             tool: 'publish_article',
             arguments: ['article_id' => 42],
             reason: 'Publishing is irreversible.',
@@ -575,7 +575,7 @@ it('drafts a post and waits for a human before publishing', function () {
 
     $user = User::factory()->create();
 
-    $session = Harness::agent(ContentAgent::class)->for($user)->create();
+    $session = Clutch::agent(ContentAgent::class)->for($user)->create();
 
     $session->queue('Research AI receptionists and draft a post.');
     $session->refresh()->queue('Looks good, publish it.');
@@ -587,25 +587,25 @@ it('drafts a post and waits for a human before publishing', function () {
 });
 
 it('publishes once the approval lands, and only once', function () {
-    $fake = Harness::fake([
-        HarnessResult::awaitingApproval(tool: 'publish_article', arguments: ['article_id' => 42]),
-        HarnessResult::text('Published.'),
+    $fake = Clutch::fake([
+        ClutchResult::awaitingApproval(tool: 'publish_article', arguments: ['article_id' => 42]),
+        ClutchResult::text('Published.'),
     ]);
 
     $user = User::factory()->create();
-    $session = Harness::agent(ContentAgent::class)->for($user)->create();
+    $session = Clutch::agent(ContentAgent::class)->for($user)->create();
 
     $paused = $session->prompt('Publish article 42.');
     $approval = $paused->pendingApprovals->first();
 
     // A second request, in a different process, with no memory of the first.
     $this->actingAs($user)
-        ->post("/api/agent-harness/runs/{$paused->run->id}/approvals/{$approval->id}/approve")
+        ->post("/api/clutch/runs/{$paused->run->id}/approvals/{$approval->id}/approve")
         ->assertOk();
 
     // Double-click.
     $this->actingAs($user)
-        ->post("/api/agent-harness/runs/{$paused->run->id}/approvals/{$approval->id}/approve")
+        ->post("/api/clutch/runs/{$paused->run->id}/approvals/{$approval->id}/approve")
         ->assertOk();
 
     $fake->assertApproved('publish_article');
@@ -615,7 +615,7 @@ it('publishes once the approval lands, and only once', function () {
 });
 ```
 
-`Harness::fake()` swaps in a deterministic driver and runs queued work inline. Everything else stays real: the coordinator, the state machine, the event store, approvals, artifacts, the ledger, and the HTTP routes. You are testing against the actual runtime with the provider removed.
+`Clutch::fake()` swaps in a deterministic driver and runs queued work inline. Everything else stays real: the coordinator, the state machine, the event store, approvals, artifacts, the ledger, and the HTTP routes. You are testing against the actual runtime with the provider removed.
 
 ### Testing against real Laravel AI
 
@@ -625,7 +625,7 @@ To exercise the real driver, fake the agent instead of the harness using Laravel
 it('runs the real driver', function () {
     ResearchAgent::fake(['Their weakest flank is onboarding.']);
 
-    $session = Harness::agent(ResearchAgent::class)->for($this->user)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->user)->create();
 
     expect($session->prompt('Research competitors.')->text)
         ->toBe('Their weakest flank is onboarding.');

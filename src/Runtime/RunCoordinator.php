@@ -2,38 +2,38 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Runtime;
+namespace Clutch\Laravel\Runtime;
 
-use AgentHarness\Laravel\Approvals\ApprovalBroker;
-use AgentHarness\Laravel\Artifacts\ArtifactManager;
-use AgentHarness\Laravel\Artifacts\ArtifactRegistrar;
-use AgentHarness\Laravel\Budgets\BudgetManager;
-use AgentHarness\Laravel\Checkpoints\CheckpointStore;
-use AgentHarness\Laravel\Contracts\HarnessDriver;
-use AgentHarness\Laravel\Data\Continuation;
-use AgentHarness\Laravel\Data\DriverSession;
-use AgentHarness\Laravel\Data\StartSession;
-use AgentHarness\Laravel\Data\TurnInput;
-use AgentHarness\Laravel\Data\TurnResult;
-use AgentHarness\Laravel\Enums\EventType;
-use AgentHarness\Laravel\Enums\FailureCategory;
-use AgentHarness\Laravel\Enums\RunStatus;
-use AgentHarness\Laravel\Enums\SessionStatus;
-use AgentHarness\Laravel\Events\RunStatusChanged;
-use AgentHarness\Laravel\Events\SessionStatusChanged;
-use AgentHarness\Laravel\Exceptions\InvalidStateTransition;
-use AgentHarness\Laravel\Exceptions\RunNotFound;
-use AgentHarness\Laravel\Exceptions\SessionBusy;
-use AgentHarness\Laravel\Jobs\ContinueAgentRun;
-use AgentHarness\Laravel\Jobs\ExecuteAgentRun;
-use AgentHarness\Laravel\Leases\LeaseManager;
-use AgentHarness\Laravel\Models\Run;
-use AgentHarness\Laravel\Models\Session;
-use AgentHarness\Laravel\Streaming\StreamedRun;
-use AgentHarness\Laravel\Support\Id;
-use AgentHarness\Laravel\ValueObjects\BudgetUsage;
-use AgentHarness\Laravel\ValueObjects\NormalizedFailure;
 use Closure;
+use Clutch\Laravel\Approvals\ApprovalBroker;
+use Clutch\Laravel\Artifacts\ArtifactManager;
+use Clutch\Laravel\Artifacts\ArtifactRegistrar;
+use Clutch\Laravel\Budgets\BudgetManager;
+use Clutch\Laravel\Checkpoints\CheckpointStore;
+use Clutch\Laravel\Contracts\ClutchDriver;
+use Clutch\Laravel\Data\Continuation;
+use Clutch\Laravel\Data\DriverSession;
+use Clutch\Laravel\Data\StartSession;
+use Clutch\Laravel\Data\TurnInput;
+use Clutch\Laravel\Data\TurnResult;
+use Clutch\Laravel\Enums\EventType;
+use Clutch\Laravel\Enums\FailureCategory;
+use Clutch\Laravel\Enums\RunStatus;
+use Clutch\Laravel\Enums\SessionStatus;
+use Clutch\Laravel\Events\RunStatusChanged;
+use Clutch\Laravel\Events\SessionStatusChanged;
+use Clutch\Laravel\Exceptions\InvalidStateTransition;
+use Clutch\Laravel\Exceptions\RunNotFound;
+use Clutch\Laravel\Exceptions\SessionBusy;
+use Clutch\Laravel\Jobs\ContinueAgentRun;
+use Clutch\Laravel\Jobs\ExecuteAgentRun;
+use Clutch\Laravel\Leases\LeaseManager;
+use Clutch\Laravel\Models\Run;
+use Clutch\Laravel\Models\Session;
+use Clutch\Laravel\Streaming\StreamedRun;
+use Clutch\Laravel\Support\Id;
+use Clutch\Laravel\ValueObjects\BudgetUsage;
+use Clutch\Laravel\ValueObjects\NormalizedFailure;
 use Illuminate\Database\Connection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Event;
@@ -57,7 +57,7 @@ class RunCoordinator
      * run.started and terminal events would never reach a streaming client —
      * only the driver's own events would.
      *
-     * @var (Closure(\AgentHarness\Laravel\Models\RunEvent): void)|null
+     * @var (Closure(\Clutch\Laravel\Models\RunEvent): void)|null
      */
     protected ?Closure $streamListener = null;
 
@@ -116,7 +116,7 @@ class RunCoordinator
             // stuck in `creating` where nothing will ever pick it up.
             $this->transitionSession($session, SessionStatus::Failed);
 
-            $this->logger->error('Harness session failed to start.', [
+            $this->logger->error('Clutch session failed to start.', [
                 'session_id' => $session->id,
                 'driver' => $session->driver,
                 'exception' => $e::class,
@@ -157,7 +157,7 @@ class RunCoordinator
         try {
             $driver->destroy($this->restoreDriverSession($session, $driver));
         } catch (Throwable $e) {
-            $this->logger->warning('Harness driver failed to destroy a session cleanly.', [
+            $this->logger->warning('Clutch driver failed to destroy a session cleanly.', [
                 'session_id' => $session->id,
                 'exception' => $e::class,
             ]);
@@ -241,8 +241,8 @@ class RunCoordinator
         // `queued` state is not yet readable.
         $this->connection->afterCommit(function () use ($session, $run): void {
             ExecuteAgentRun::dispatch($run->id, $run->version)
-                ->onConnection($session->queue_connection ?? config('agent-harness.queue.connection'))
-                ->onQueue($session->queue ?? config('agent-harness.queue.queue'));
+                ->onConnection($session->queue_connection ?? config('clutch.queue.connection'))
+                ->onQueue($session->queue ?? config('clutch.queue.queue'));
         });
 
         return $run->refresh();
@@ -254,13 +254,13 @@ class RunCoordinator
      * @param  array<int, mixed>  $attachments
      * @param  array<string, mixed>  $options
      */
-    public function promptNow(Session $session, string $prompt, array $attachments = [], array $options = []): HarnessResult
+    public function promptNow(Session $session, string $prompt, array $attachments = [], array $options = []): ClutchResult
     {
         $run = $this->createRun($session, $prompt, $attachments, $options);
 
         $run = $this->executeRun($run->id, streaming: false);
 
-        return HarnessResult::fromRun($run);
+        return ClutchResult::fromRun($run);
     }
 
     /**
@@ -287,7 +287,7 @@ class RunCoordinator
      * fails to take the lease or finds the run no longer executable and exits
      * without mutating newer state.
      *
-     * @param  (Closure(\AgentHarness\Laravel\Models\RunEvent): void)|null  $onEvent
+     * @param  (Closure(\Clutch\Laravel\Models\RunEvent): void)|null  $onEvent
      */
     public function executeRun(string $runId, bool $streaming = false, ?Closure $onEvent = null, ?int $expectedVersion = null): Run
     {
@@ -310,7 +310,7 @@ class RunCoordinator
     /**
      * Resume a paused run once its approvals are resolved.
      *
-     * @param  (Closure(\AgentHarness\Laravel\Models\RunEvent): void)|null  $onEvent
+     * @param  (Closure(\Clutch\Laravel\Models\RunEvent): void)|null  $onEvent
      */
     public function continueRun(string $runId, bool $streaming = false, ?Closure $onEvent = null): Run
     {
@@ -337,7 +337,7 @@ class RunCoordinator
     /**
      * The shared execution path for a fresh turn and for a continuation.
      *
-     * @param  (Closure(\AgentHarness\Laravel\Models\RunEvent): void)|null  $onEvent
+     * @param  (Closure(\Clutch\Laravel\Models\RunEvent): void)|null  $onEvent
      */
     protected function runTurnFor(
         Session $session,
@@ -355,7 +355,7 @@ class RunCoordinator
     }
 
     /**
-     * @param  (Closure(\AgentHarness\Laravel\Models\RunEvent): void)|null  $onEvent
+     * @param  (Closure(\Clutch\Laravel\Models\RunEvent): void)|null  $onEvent
      */
     protected function performTurn(
         Session $session,
@@ -458,7 +458,7 @@ class RunCoordinator
         } catch (Throwable $e) {
             $this->finalizeFailure($session, $run, NormalizedFailure::fromThrowable($e), $this->elapsed($startingUsage, $startedAt));
 
-            $this->logger->error('Harness run failed.', [
+            $this->logger->error('Clutch run failed.', [
                 'session_id' => $session->id,
                 'run_id' => $run->id,
                 'driver' => $driver->name(),
@@ -475,12 +475,12 @@ class RunCoordinator
     /**
      * Commit whatever outcome the driver reported.
      *
-     * @param  \AgentHarness\Laravel\ValueObjects\RunBudget  $budget
+     * @param  \Clutch\Laravel\ValueObjects\RunBudget  $budget
      */
     protected function finalize(
         Session $session,
         Run $run,
-        HarnessDriver $driver,
+        ClutchDriver $driver,
         TurnResult $result,
         BudgetUsage $startingUsage,
         float $startedAt,
@@ -733,8 +733,8 @@ class RunCoordinator
 
             $this->connection->afterCommit(function () use ($locked, $retry): void {
                 ExecuteAgentRun::dispatch($retry->id, $retry->version)
-                    ->onConnection($locked->queue_connection ?? config('agent-harness.queue.connection'))
-                    ->onQueue($locked->queue ?? config('agent-harness.queue.queue'));
+                    ->onConnection($locked->queue_connection ?? config('clutch.queue.connection'))
+                    ->onQueue($locked->queue ?? config('clutch.queue.queue'));
             });
 
             return $retry;
@@ -758,8 +758,8 @@ class RunCoordinator
 
         $this->connection->afterCommit(function () use ($session, $run): void {
             ContinueAgentRun::dispatch($run->id, $run->version)
-                ->onConnection($session->queue_connection ?? config('agent-harness.queue.connection'))
-                ->onQueue($session->queue ?? config('agent-harness.queue.queue'));
+                ->onConnection($session->queue_connection ?? config('clutch.queue.connection'))
+                ->onQueue($session->queue ?? config('clutch.queue.queue'));
         });
 
         return $run->refresh();
@@ -819,7 +819,7 @@ class RunCoordinator
             }
         });
 
-        if ($recorded instanceof \AgentHarness\Laravel\Models\RunEvent && $this->streamListener instanceof Closure) {
+        if ($recorded instanceof \Clutch\Laravel\Models\RunEvent && $this->streamListener instanceof Closure) {
             ($this->streamListener)($recorded);
         }
 
@@ -885,7 +885,7 @@ class RunCoordinator
     /**
      * Rebuild the driver's session handle from the last stored checkpoint.
      */
-    protected function restoreDriverSession(Session $session, HarnessDriver $driver): DriverSession
+    protected function restoreDriverSession(Session $session, ClutchDriver $driver): DriverSession
     {
         $checkpoint = $this->checkpoints->latestForSession($session->id);
 
@@ -934,7 +934,7 @@ class RunCoordinator
     protected function isExecutable(Run $run, ?int $expectedVersion): bool
     {
         if ($run->status->isTerminal()) {
-            $this->logger->info('Harness skipped a run that already reached a terminal state.', [
+            $this->logger->info('Clutch skipped a run that already reached a terminal state.', [
                 'run_id' => $run->id,
                 'status' => $run->status->value,
             ]);
@@ -943,7 +943,7 @@ class RunCoordinator
         }
 
         if ($expectedVersion !== null && $run->version > $expectedVersion + 1) {
-            $this->logger->info('Harness skipped a stale run delivery.', [
+            $this->logger->info('Clutch skipped a stale run delivery.', [
                 'run_id' => $run->id,
                 'expected_version' => $expectedVersion,
                 'actual_version' => $run->version,

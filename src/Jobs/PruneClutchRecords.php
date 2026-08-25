@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Jobs;
+namespace Clutch\Laravel\Jobs;
 
-use AgentHarness\Laravel\Enums\ApprovalStatus;
-use AgentHarness\Laravel\Models\Approval;
-use AgentHarness\Laravel\Models\Artifact;
-use AgentHarness\Laravel\Models\Checkpoint;
-use AgentHarness\Laravel\Models\Run;
-use AgentHarness\Laravel\Models\RunEvent;
-use AgentHarness\Laravel\Models\Session;
-use AgentHarness\Laravel\Models\ToolExecution;
+use Clutch\Laravel\Enums\ApprovalStatus;
+use Clutch\Laravel\Models\Approval;
+use Clutch\Laravel\Models\Artifact;
+use Clutch\Laravel\Models\Checkpoint;
+use Clutch\Laravel\Models\Run;
+use Clutch\Laravel\Models\RunEvent;
+use Clutch\Laravel\Models\Session;
+use Clutch\Laravel\Models\ToolExecution;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -27,7 +27,7 @@ use Illuminate\Support\Facades\Storage;
  * artifact metadata while the artifact is still user-accessible. The job is
  * safe to interrupt and restart.
  */
-class PruneAgentHarnessRecords implements ShouldQueue
+class PruneClutchRecords implements ShouldQueue
 {
     use Dispatchable;
     use InteractsWithQueue;
@@ -178,7 +178,7 @@ class PruneAgentHarnessRecords implements ShouldQueue
     protected function days(string $key): ?int
     {
         $value = $this->retentionDays[$key]
-            ?? config("agent-harness.retention.{$key}");
+            ?? config("clutch.retention.{$key}");
 
         return $value === null ? null : (int) $value;
     }

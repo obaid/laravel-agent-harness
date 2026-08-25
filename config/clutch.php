@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use AgentHarness\Laravel\Drivers\LaravelAiDriver;
-use AgentHarness\Laravel\Enums\PermissionMode;
+use Clutch\Laravel\Drivers\LaravelAiDriver;
+use Clutch\Laravel\Enums\PermissionMode;
 
 return [
 
@@ -18,16 +18,16 @@ return [
     |
     */
 
-    'default_driver' => env('AGENT_HARNESS_DRIVER', 'laravel-ai'),
+    'default_driver' => env('CLUTCH_DRIVER', 'laravel-ai'),
 
     'drivers' => [
         'laravel-ai' => [
             'driver' => LaravelAiDriver::class,
 
             // Optional overrides applied to every session using this driver.
-            'provider' => env('AGENT_HARNESS_PROVIDER'),
-            'model' => env('AGENT_HARNESS_MODEL'),
-            'timeout' => env('AGENT_HARNESS_TIMEOUT', 120),
+            'provider' => env('CLUTCH_PROVIDER'),
+            'model' => env('CLUTCH_MODEL'),
+            'timeout' => env('CLUTCH_TIMEOUT', 120),
         ],
     ],
 
@@ -42,9 +42,9 @@ return [
     */
 
     'queue' => [
-        'connection' => env('AGENT_HARNESS_QUEUE_CONNECTION'),
-        'queue' => env('AGENT_HARNESS_QUEUE', 'agents'),
-        'timeout' => (int) env('AGENT_HARNESS_QUEUE_TIMEOUT', 900),
+        'connection' => env('CLUTCH_QUEUE_CONNECTION'),
+        'queue' => env('CLUTCH_QUEUE', 'agents'),
+        'timeout' => (int) env('CLUTCH_QUEUE_TIMEOUT', 900),
     ],
 
     /*
@@ -76,7 +76,7 @@ return [
     'approvals' => [
         // Seconds before an undecided approval expires. Null keeps it open
         // forever; an expired approval reads as a rejection to the agent.
-        'expires_after' => env('AGENT_HARNESS_APPROVAL_TTL'),
+        'expires_after' => env('CLUTCH_APPROVAL_TTL'),
     ],
 
     /*
@@ -90,11 +90,11 @@ return [
     */
 
     'events' => [
-        'broadcast' => env('AGENT_HARNESS_BROADCAST', true),
+        'broadcast' => env('CLUTCH_BROADCAST', true),
 
         // Text and reasoning deltas are reconstructable from the terminal run
         // output. Turn this off to keep a busy event table small.
-        'persist_deltas' => env('AGENT_HARNESS_PERSIST_DELTAS', true),
+        'persist_deltas' => env('CLUTCH_PERSIST_DELTAS', true),
 
         'redact' => [
             'authorization', 'api_key', 'apikey', 'token', 'password', 'secret',
@@ -133,7 +133,7 @@ return [
     */
 
     'artifacts' => [
-        'disk' => env('AGENT_HARNESS_ARTIFACT_DISK', 'local'),
+        'disk' => env('CLUTCH_ARTIFACT_DISK', 'local'),
     ],
 
     /*
@@ -148,7 +148,7 @@ return [
     */
 
     'leases' => [
-        'store' => env('AGENT_HARNESS_LEASE_STORE'),
+        'store' => env('CLUTCH_LEASE_STORE'),
         'ttl_seconds' => 60,
         'heartbeat_seconds' => 15,
     ],
@@ -232,8 +232,8 @@ return [
     */
 
     'routes' => [
-        'enabled' => env('AGENT_HARNESS_ROUTES', true),
-        'prefix' => 'api/agent-harness',
+        'enabled' => env('CLUTCH_ROUTES', true),
+        'prefix' => 'api/clutch',
         'middleware' => ['api', 'auth'],
     ],
 

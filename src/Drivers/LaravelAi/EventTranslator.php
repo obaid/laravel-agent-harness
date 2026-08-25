@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Drivers\LaravelAi;
+namespace Clutch\Laravel\Drivers\LaravelAi;
 
-use AgentHarness\Laravel\Enums\EventType;
+use Clutch\Laravel\Enums\EventType;
 use Laravel\Ai\Streaming\Events as Ai;
 use Laravel\Ai\Streaming\Events\StreamEvent;
 

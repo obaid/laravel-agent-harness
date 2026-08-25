@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Models;
+namespace Clutch\Laravel\Models;
 
-use AgentHarness\Laravel\Enums\EventType;
-use AgentHarness\Laravel\Models\Concerns\HasHarnessId;
-use AgentHarness\Laravel\Support\Id;
+use Clutch\Laravel\Enums\EventType;
+use Clutch\Laravel\Models\Concerns\HasHarnessId;
+use Clutch\Laravel\Support\Id;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -30,7 +30,7 @@ class RunEvent extends Model
 
     public $timestamps = false;
 
-    protected $table = 'agent_harness_events';
+    protected $table = 'clutch_events';
 
     protected $guarded = [];
 

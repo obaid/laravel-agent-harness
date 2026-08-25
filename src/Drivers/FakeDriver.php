@@ -2,34 +2,34 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Drivers;
+namespace Clutch\Laravel\Drivers;
 
-use AgentHarness\Laravel\Contracts\DriverEventSink;
-use AgentHarness\Laravel\Contracts\HarnessDriver;
-use AgentHarness\Laravel\Data\Continuation;
-use AgentHarness\Laravel\Data\DriverCheckpoint;
-use AgentHarness\Laravel\Data\DriverSession;
-use AgentHarness\Laravel\Data\StartSession;
-use AgentHarness\Laravel\Data\TurnInput;
-use AgentHarness\Laravel\Data\TurnResult;
-use AgentHarness\Laravel\Enums\EventType;
-use AgentHarness\Laravel\Enums\FailureCategory;
-use AgentHarness\Laravel\Runtime\CancellationSignal;
-use AgentHarness\Laravel\Runtime\RunContext;
-use AgentHarness\Laravel\Testing\ScriptedResponse;
-use AgentHarness\Laravel\ValueObjects\BudgetUsage;
-use AgentHarness\Laravel\ValueObjects\DriverCapabilities;
-use AgentHarness\Laravel\ValueObjects\NormalizedFailure;
 use Closure;
+use Clutch\Laravel\Contracts\ClutchDriver;
+use Clutch\Laravel\Contracts\DriverEventSink;
+use Clutch\Laravel\Data\Continuation;
+use Clutch\Laravel\Data\DriverCheckpoint;
+use Clutch\Laravel\Data\DriverSession;
+use Clutch\Laravel\Data\StartSession;
+use Clutch\Laravel\Data\TurnInput;
+use Clutch\Laravel\Data\TurnResult;
+use Clutch\Laravel\Enums\EventType;
+use Clutch\Laravel\Enums\FailureCategory;
+use Clutch\Laravel\Runtime\CancellationSignal;
+use Clutch\Laravel\Runtime\RunContext;
+use Clutch\Laravel\Testing\ScriptedResponse;
+use Clutch\Laravel\ValueObjects\BudgetUsage;
+use Clutch\Laravel\ValueObjects\DriverCapabilities;
+use Clutch\Laravel\ValueObjects\NormalizedFailure;
 use Illuminate\Support\Str;
 
 /**
  * A deterministic driver that replays scripted responses.
  *
- * Used by `Harness::fake()` and by the driver contract suite, so the full
+ * Used by `Clutch::fake()` and by the driver contract suite, so the full
  * session and run lifecycle can be exercised without a model provider.
  */
-class FakeDriver implements HarnessDriver
+class FakeDriver implements ClutchDriver
 {
     public const SCHEMA_VERSION = 1;
 

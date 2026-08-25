@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Runtime;
+namespace Clutch\Laravel\Runtime;
 
 use Closure;
 

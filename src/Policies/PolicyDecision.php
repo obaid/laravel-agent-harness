@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Policies;
+namespace Clutch\Laravel\Policies;
 
 /**
  * What the policy engine decided about one tool call.

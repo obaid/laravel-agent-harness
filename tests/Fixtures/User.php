@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Tests\Fixtures;
+namespace Clutch\Laravel\Tests\Fixtures;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
 

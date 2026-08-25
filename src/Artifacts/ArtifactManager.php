@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Artifacts;
+namespace Clutch\Laravel\Artifacts;
 
-use AgentHarness\Laravel\Enums\EventType;
-use AgentHarness\Laravel\Events\ArtifactCreated;
-use AgentHarness\Laravel\Models\Artifact as ArtifactModel;
-use AgentHarness\Laravel\Models\Run;
-use AgentHarness\Laravel\Runtime\EventStore;
-use AgentHarness\Laravel\Support\Id;
+use Clutch\Laravel\Enums\EventType;
+use Clutch\Laravel\Events\ArtifactCreated;
+use Clutch\Laravel\Models\Artifact as ArtifactModel;
+use Clutch\Laravel\Models\Run;
+use Clutch\Laravel\Runtime\EventStore;
+use Clutch\Laravel\Support\Id;
 use Illuminate\Support\Facades\Event;
 
 /**

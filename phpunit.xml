@@ -28,6 +28,6 @@
         <env name="CACHE_STORE" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
-        <env name="AGENT_HARNESS_BROADCAST" value="false"/>
+        <env name="CLUTCH_BROADCAST" value="false"/>
     </php>
 </phpunit>

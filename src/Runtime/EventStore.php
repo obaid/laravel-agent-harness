@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Runtime;
+namespace Clutch\Laravel\Runtime;
 
-use AgentHarness\Laravel\Enums\EventType;
-use AgentHarness\Laravel\Events\HarnessEventRecorded;
-use AgentHarness\Laravel\Models\Run;
-use AgentHarness\Laravel\Models\RunEvent;
-use AgentHarness\Laravel\Support\Id;
+use Clutch\Laravel\Enums\EventType;
+use Clutch\Laravel\Events\ClutchEventRecorded;
+use Clutch\Laravel\Models\Run;
+use Clutch\Laravel\Models\RunEvent;
+use Clutch\Laravel\Support\Id;
 use Illuminate\Database\Connection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -169,14 +169,14 @@ class EventStore
      */
     protected function nextSequence(Run $run, int $count = 1): int
     {
-        $current = (int) $this->connection->table('agent_harness_runs')
+        $current = (int) $this->connection->table('clutch_runs')
             ->where('id', $run->id)
             ->lockForUpdate()
             ->value('last_event_sequence');
 
         $next = $current + $count;
 
-        $this->connection->table('agent_harness_runs')
+        $this->connection->table('clutch_runs')
             ->where('id', $run->id)
             ->update(['last_event_sequence' => $next]);
 
@@ -195,7 +195,7 @@ class EventStore
             // Dispatched through the facade rather than an injected instance so
             // a test calling Event::fake() after this singleton is built still
             // observes the events.
-            Event::dispatch(HarnessEventRecorded::fromModel($event));
+            Event::dispatch(ClutchEventRecorded::fromModel($event));
         });
     }
 }

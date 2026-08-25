@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\ValueObjects;
+namespace Clutch\Laravel\ValueObjects;
 
 use Illuminate\Contracts\Support\Arrayable;
 use JsonSerializable;

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Runtime;
+namespace Clutch\Laravel\Runtime;
 
-use AgentHarness\Laravel\Enums\PermissionMode;
-use AgentHarness\Laravel\Models\Session;
-use AgentHarness\Laravel\ValueObjects\RunBudget;
+use Clutch\Laravel\Enums\PermissionMode;
+use Clutch\Laravel\Models\Session;
+use Clutch\Laravel\ValueObjects\RunBudget;
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
 
@@ -53,7 +53,7 @@ class SessionBuilder
     public function __construct(protected RunCoordinator $coordinator)
     {
         $this->permissionMode = PermissionMode::tryFrom(
-            (string) config('agent-harness.permissions.default', PermissionMode::ApproveSensitive->value)
+            (string) config('clutch.permissions.default', PermissionMode::ApproveSensitive->value)
         ) ?? PermissionMode::ApproveSensitive;
     }
 
@@ -244,15 +244,15 @@ class SessionBuilder
     {
         if ($this->agentClass === null && $this->runtimeName === null) {
             throw new InvalidArgumentException(
-                'A harness session needs either an agent class or a runtime. '.
-                'Call Harness::agent(YourAgent::class) or Harness::runtime(\'name\').'
+                'A Clutch session needs either an agent class or a runtime. '.
+                'Call Clutch::agent(YourAgent::class) or Clutch::runtime(\'name\').'
             );
         }
 
         return $this->coordinator->createSession([
             'agent_class' => $this->agentClass,
             'runtime_name' => $this->runtimeName,
-            'driver' => $this->driver ?? (string) config('agent-harness.default_driver', 'laravel-ai'),
+            'driver' => $this->driver ?? (string) config('clutch.default_driver', 'laravel-ai'),
             'name' => $this->name,
             'permission_mode' => $this->permissionMode,
             'configuration' => $this->configurationPayload(),

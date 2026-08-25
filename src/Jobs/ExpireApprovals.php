@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Jobs;
+namespace Clutch\Laravel\Jobs;
 
-use AgentHarness\Laravel\Approvals\ApprovalBroker;
-use AgentHarness\Laravel\Enums\RunStatus;
-use AgentHarness\Laravel\Models\Approval;
-use AgentHarness\Laravel\Models\Run;
-use AgentHarness\Laravel\Runtime\RunCoordinator;
+use Clutch\Laravel\Approvals\ApprovalBroker;
+use Clutch\Laravel\Enums\RunStatus;
+use Clutch\Laravel\Models\Approval;
+use Clutch\Laravel\Models\Run;
+use Clutch\Laravel\Runtime\RunCoordinator;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;

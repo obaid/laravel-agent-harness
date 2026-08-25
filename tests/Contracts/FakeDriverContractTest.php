@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-use AgentHarness\Laravel\Drivers\FakeDriver;
-use AgentHarness\Laravel\Runtime\HarnessResult;
-use AgentHarness\Laravel\Testing\DriverContractTests;
+use Clutch\Laravel\Drivers\FakeDriver;
+use Clutch\Laravel\Runtime\ClutchResult;
+use Clutch\Laravel\Testing\DriverContractTests;
 
 it('passes the shared driver contract suite', function (): void {
     $result = DriverContractTests::for(new FakeDriver([
-        HarnessResult::text('Hello there.')->withToolCall('search_web', ['q' => 'laravel'], 'results'),
+        ClutchResult::text('Hello there.')->withToolCall('search_web', ['q' => 'laravel'], 'results'),
     ]))->run();
 
     expect($result['passed'])->toContain('starts and stops a session')
@@ -27,9 +27,9 @@ it('passes the shared driver contract suite', function (): void {
 it('skips checks a driver does not claim to support', function (): void {
     $limited = new class extends FakeDriver
     {
-        public function capabilities(): AgentHarness\Laravel\ValueObjects\DriverCapabilities
+        public function capabilities(): Clutch\Laravel\ValueObjects\DriverCapabilities
         {
-            return new AgentHarness\Laravel\ValueObjects\DriverCapabilities(
+            return new Clutch\Laravel\ValueObjects\DriverCapabilities(
                 streaming: false,
                 approvals: false,
                 sessionResume: false,

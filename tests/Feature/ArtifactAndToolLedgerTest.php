@@ -2,29 +2,29 @@
 
 declare(strict_types=1);
 
-use AgentHarness\Laravel\Artifacts\Artifact;
-use AgentHarness\Laravel\Data\ToolInvocation;
-use AgentHarness\Laravel\Enums\ArtifactKind;
-use AgentHarness\Laravel\Facades\Harness;
-use AgentHarness\Laravel\Models\Artifact as ArtifactModel;
-use AgentHarness\Laravel\Models\ToolExecution;
-use AgentHarness\Laravel\Runtime\HarnessResult;
-use AgentHarness\Laravel\Tests\Fixtures\Agents\ResearchAgent;
-use AgentHarness\Laravel\Tests\Fixtures\Tools\PublishArticle;
-use AgentHarness\Laravel\Tools\ToolExecutionLedger;
+use Clutch\Laravel\Artifacts\Artifact;
+use Clutch\Laravel\Data\ToolInvocation;
+use Clutch\Laravel\Enums\ArtifactKind;
+use Clutch\Laravel\Facades\Clutch;
+use Clutch\Laravel\Models\Artifact as ArtifactModel;
+use Clutch\Laravel\Models\ToolExecution;
+use Clutch\Laravel\Runtime\ClutchResult;
+use Clutch\Laravel\Tests\Fixtures\Agents\ResearchAgent;
+use Clutch\Laravel\Tests\Fixtures\Tools\PublishArticle;
+use Clutch\Laravel\Tools\ToolExecutionLedger;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function (): void {
     Storage::fake('artifacts');
-    config()->set('agent-harness.artifacts.disk', 'artifacts');
+    config()->set('clutch.artifacts.disk', 'artifacts');
 
     $this->owner = $this->user();
     PublishArticle::$published = [];
 });
 
 it('attaches an artifact to the run that produced it', function (): void {
-    Harness::fake([
-        HarnessResult::text('Report ready.')->withArtifact(
+    Clutch::fake([
+        ClutchResult::text('Report ready.')->withArtifact(
             Artifact::fromContents('# Content gap report', 'reports/content-gap.md')
                 ->name('Content gap report')
                 ->mimeType('text/markdown')
@@ -32,7 +32,7 @@ it('attaches an artifact to the run that produced it', function (): void {
         ),
     ]);
 
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
 
     $result = $session->prompt('Produce a content gap report.');
 
@@ -53,13 +53,13 @@ it('attaches an artifact to the run that produced it', function (): void {
 });
 
 it('records integrity metadata for an artifact', function (): void {
-    Harness::fake([
-        HarnessResult::text('Done.')->withArtifact(
+    Clutch::fake([
+        ClutchResult::text('Done.')->withArtifact(
             Artifact::fromContents('hello world', 'notes.txt')->name('Notes'),
         ),
     ]);
 
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
     $artifact = $session->prompt('Write notes.')->artifacts->first();
 
     expect($artifact->sha256)->toBe(hash('sha256', 'hello world'))
@@ -68,13 +68,13 @@ it('records integrity metadata for an artifact', function (): void {
 });
 
 it('emits an artifact event without copying the bytes into it', function (): void {
-    Harness::fake([
-        HarnessResult::text('Done.')->withArtifact(
+    Clutch::fake([
+        ClutchResult::text('Done.')->withArtifact(
             Artifact::fromContents('secret bytes that must not be duplicated', 'out.txt')->name('Out'),
         ),
     ]);
 
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
     $run = $session->prompt('Write it.')->run;
 
     $event = $run->events()->where('type', 'artifact.created')->firstOrFail();
@@ -87,15 +87,15 @@ it('emits an artifact event without copying the bytes into it', function (): voi
 it('references an artifact that already exists on a disk', function (): void {
     Storage::disk('artifacts')->put('reports/existing.pdf', '%PDF-1.4 fake');
 
-    Harness::fake([
-        HarnessResult::text('Attached.')->withArtifact(
+    Clutch::fake([
+        ClutchResult::text('Attached.')->withArtifact(
             Artifact::fromStorage('artifacts', 'reports/existing.pdf')
                 ->name('Existing report')
                 ->mimeType('application/pdf'),
         ),
     ]);
 
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
     $artifact = $session->prompt('Attach it.')->artifacts->first();
 
     expect($artifact->kind)->toBe(ArtifactKind::Document)
@@ -107,9 +107,9 @@ it('runs an idempotent tool once, however many times it is delivered', function 
     $ledger = app(ToolExecutionLedger::class);
     $tool = new PublishArticle;
 
-    Harness::fake([HarnessResult::text('ok')]);
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
-    $run = Harness::coordinator()->createRun($session, 'Publish it.');
+    Clutch::fake([ClutchResult::text('ok')]);
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
+    $run = Clutch::coordinator()->createRun($session, 'Publish it.');
 
     $invocation = new ToolInvocation(
         sessionId: $session->id,
@@ -145,9 +145,9 @@ it('lets a different side effect through', function (): void {
     $ledger = app(ToolExecutionLedger::class);
     $tool = new PublishArticle;
 
-    Harness::fake([HarnessResult::text('ok')]);
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
-    $run = Harness::coordinator()->createRun($session, 'Publish both.');
+    Clutch::fake([ClutchResult::text('ok')]);
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
+    $run = Clutch::coordinator()->createRun($session, 'Publish both.');
 
     foreach ([42, 43] as $index => $id) {
         $ledger->guard(
@@ -165,9 +165,9 @@ it('records a failed tool without claiming it succeeded', function (): void {
     $ledger = app(ToolExecutionLedger::class);
     $tool = new PublishArticle;
 
-    Harness::fake([HarnessResult::text('ok')]);
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
-    $run = Harness::coordinator()->createRun($session, 'Publish it.');
+    Clutch::fake([ClutchResult::text('ok')]);
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
+    $run = Clutch::coordinator()->createRun($session, 'Publish it.');
 
     $invocation = new ToolInvocation($session->id, $run->id, 'call_1', 'publish_article', ['article_id' => 1]);
 
@@ -185,9 +185,9 @@ it('records a failed tool without claiming it succeeded', function (): void {
 it('records a non-idempotent tool for audit without suppressing duplicates', function (): void {
     $ledger = app(ToolExecutionLedger::class);
 
-    Harness::fake([HarnessResult::text('ok')]);
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
-    $run = Harness::coordinator()->createRun($session, 'Search.');
+    Clutch::fake([ClutchResult::text('ok')]);
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
+    $run = Clutch::coordinator()->createRun($session, 'Search.');
 
     $calls = 0;
 

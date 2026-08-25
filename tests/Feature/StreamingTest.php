@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-use AgentHarness\Laravel\Enums\EventType;
-use AgentHarness\Laravel\Facades\Harness;
-use AgentHarness\Laravel\Models\RunEvent;
-use AgentHarness\Laravel\Runtime\HarnessResult;
-use AgentHarness\Laravel\Streaming\StreamedRun;
-use AgentHarness\Laravel\Streaming\VercelDataProtocol;
-use AgentHarness\Laravel\Tests\Fixtures\Agents\ResearchAgent;
+use Clutch\Laravel\Enums\EventType;
+use Clutch\Laravel\Facades\Clutch;
+use Clutch\Laravel\Models\RunEvent;
+use Clutch\Laravel\Runtime\ClutchResult;
+use Clutch\Laravel\Streaming\StreamedRun;
+use Clutch\Laravel\Streaming\VercelDataProtocol;
+use Clutch\Laravel\Tests\Fixtures\Agents\ResearchAgent;
 
 beforeEach(function (): void {
     $this->owner = $this->user();
-    $this->harness = Harness::fake([HarnessResult::text('The report is ready to review.')]);
-    $this->session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $this->clutch = Clutch::fake([ClutchResult::text('The report is ready to review.')]);
+    $this->session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
 });
 
 it('yields events as they are recorded rather than after the run', function (): void {
@@ -48,9 +48,9 @@ it('returns the terminal result after the stream drains', function (): void {
 it('produces the same stored history for streamed and queued runs', function (): void {
     $streamed = $this->session->stream('Create the report.')->wait();
 
-    $this->harness->script([HarnessResult::text('The report is ready to review.')]);
+    $this->clutch->script([ClutchResult::text('The report is ready to review.')]);
 
-    $second = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $second = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
     $queued = $second->queue('Create the report.');
 
     // A queued run additionally records run.queued; everything the driver

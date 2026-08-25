@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Testing;
+namespace Clutch\Laravel\Testing;
 
-use AgentHarness\Laravel\Contracts\DriverEventSink;
-use AgentHarness\Laravel\Data\DriverCheckpoint;
-use AgentHarness\Laravel\Enums\EventType;
+use Clutch\Laravel\Contracts\DriverEventSink;
+use Clutch\Laravel\Data\DriverCheckpoint;
+use Clutch\Laravel\Enums\EventType;
 
 /**
  * An in-memory event sink for driver tests.

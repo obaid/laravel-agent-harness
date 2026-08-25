@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Runtime;
+namespace Clutch\Laravel\Runtime;
 
-use AgentHarness\Laravel\Contracts\HarnessDriver;
-use AgentHarness\Laravel\Exceptions\DriverNotFound;
-use AgentHarness\Laravel\Exceptions\HarnessCapabilityUnsupported;
 use Closure;
+use Clutch\Laravel\Contracts\ClutchDriver;
+use Clutch\Laravel\Exceptions\CapabilityUnsupported;
+use Clutch\Laravel\Exceptions\DriverNotFound;
 use Illuminate\Contracts\Container\Container;
 
 /**
@@ -18,14 +18,14 @@ use Illuminate\Contracts\Container\Container;
  */
 class DriverRegistry
 {
-    /** @var array<string, HarnessDriver> */
+    /** @var array<string, ClutchDriver> */
     protected array $resolved = [];
 
-    /** @var array<string, Closure(Container): HarnessDriver> */
+    /** @var array<string, Closure(Container): ClutchDriver> */
     protected array $customCreators = [];
 
     /**
-     * @param  array<string, array{driver: class-string<HarnessDriver>}|class-string<HarnessDriver>>  $config
+     * @param  array<string, array{driver: class-string<ClutchDriver>}|class-string<ClutchDriver>>  $config
      */
     public function __construct(
         protected Container $container,
@@ -36,7 +36,7 @@ class DriverRegistry
     /**
      * Resolve a driver, memoizing the instance for this request.
      */
-    public function driver(?string $name = null): HarnessDriver
+    public function driver(?string $name = null): ClutchDriver
     {
         $name ??= $this->default;
 
@@ -46,7 +46,7 @@ class DriverRegistry
     /**
      * Register a driver factory at runtime.
      *
-     * @param  Closure(Container): HarnessDriver  $creator
+     * @param  Closure(Container): ClutchDriver  $creator
      */
     public function extend(string $name, Closure $creator): static
     {
@@ -60,7 +60,7 @@ class DriverRegistry
     /**
      * Register an already-built driver instance.
      */
-    public function register(string $name, HarnessDriver $driver): static
+    public function register(string $name, ClutchDriver $driver): static
     {
         $this->resolved[$name] = $driver;
 
@@ -99,19 +99,19 @@ class DriverRegistry
     /**
      * Assert a driver supports a capability before a caller depends on it.
      *
-     * @throws HarnessCapabilityUnsupported
+     * @throws CapabilityUnsupported
      */
-    public function requireCapability(HarnessDriver $driver, string $capability): void
+    public function requireCapability(ClutchDriver $driver, string $capability): void
     {
         if (! $driver->capabilities()->supports($capability)) {
-            throw HarnessCapabilityUnsupported::for($driver->name(), $capability);
+            throw CapabilityUnsupported::for($driver->name(), $capability);
         }
     }
 
     /**
      * @throws DriverNotFound
      */
-    protected function resolve(string $name): HarnessDriver
+    protected function resolve(string $name): ClutchDriver
     {
         if (isset($this->customCreators[$name])) {
             return ($this->customCreators[$name])($this->container);
@@ -127,9 +127,9 @@ class DriverRegistry
 
         $driver = $this->container->make($class, is_array($config) ? ['config' => $config] : []);
 
-        if (! $driver instanceof HarnessDriver) {
+        if (! $driver instanceof ClutchDriver) {
             throw new DriverNotFound(
-                "The class [{$class}] registered as harness driver [{$name}] does not implement HarnessDriver."
+                "The class [{$class}] registered as driver [{$name}] does not implement ClutchDriver."
             );
         }
 

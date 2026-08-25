@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Exceptions;
+namespace Clutch\Laravel\Exceptions;
 
-final class DriverNotFound extends HarnessException
+final class DriverNotFound extends ClutchException
 {
     public function errorCode(): string
     {
@@ -18,6 +18,6 @@ final class DriverNotFound extends HarnessException
 
     public static function named(string $name): self
     {
-        return new self("No harness driver is registered under the name [{$name}].");
+        return new self("No driver is registered under the name [{$name}].");
     }
 }

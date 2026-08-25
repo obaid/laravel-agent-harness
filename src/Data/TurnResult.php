@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Data;
+namespace Clutch\Laravel\Data;
 
-use AgentHarness\Laravel\ValueObjects\BudgetUsage;
-use AgentHarness\Laravel\ValueObjects\NormalizedFailure;
+use Clutch\Laravel\ValueObjects\BudgetUsage;
+use Clutch\Laravel\ValueObjects\NormalizedFailure;
 
 /**
  * What a driver returns when it stops working on a turn.
@@ -84,7 +84,7 @@ final readonly class TurnResult
         return new self(
             self::BUDGET_EXCEEDED, $text, null, [], $usage,
             new NormalizedFailure(
-                \AgentHarness\Laravel\Enums\FailureCategory::BudgetExceeded,
+                \Clutch\Laravel\Enums\FailureCategory::BudgetExceeded,
                 'The run stopped because its ['.($exhaustion['limit'] ?? 'budget').'] limit was reached.',
             ),
             $session,

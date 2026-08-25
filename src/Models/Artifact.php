@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Models;
+namespace Clutch\Laravel\Models;
 
-use AgentHarness\Laravel\Enums\ArtifactKind;
-use AgentHarness\Laravel\Exceptions\ArtifactUnavailable;
-use AgentHarness\Laravel\Models\Concerns\HasHarnessId;
-use AgentHarness\Laravel\Support\Id;
+use Clutch\Laravel\Enums\ArtifactKind;
+use Clutch\Laravel\Exceptions\ArtifactUnavailable;
+use Clutch\Laravel\Models\Concerns\HasHarnessId;
+use Clutch\Laravel\Support\Id;
 use DateTimeInterface;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Database\Eloquent\Model;
@@ -39,7 +39,7 @@ class Artifact extends Model
 {
     use HasHarnessId;
 
-    protected $table = 'agent_harness_artifacts';
+    protected $table = 'clutch_artifacts';
 
     protected $guarded = [];
 

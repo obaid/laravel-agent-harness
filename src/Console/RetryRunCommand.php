@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Console;
+namespace Clutch\Laravel\Console;
 
-use AgentHarness\Laravel\Models\Run;
+use Clutch\Laravel\Models\Run;
 use Illuminate\Console\Command;
 
 class RetryRunCommand extends Command
 {
-    protected $signature = 'harness:retry
+    protected $signature = 'clutch:retry
         {run : The run identifier}
         {--reset-budget : Start the new attempt with a fresh budget}';
 

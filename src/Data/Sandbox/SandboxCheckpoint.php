@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Data\Sandbox;
+namespace Clutch\Laravel\Data\Sandbox;
 
 /**
  * A restorable snapshot of a sandbox.

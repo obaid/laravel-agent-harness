@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Streaming;
+namespace Clutch\Laravel\Streaming;
 
-use AgentHarness\Laravel\Models\Run;
-use AgentHarness\Laravel\Models\RunEvent;
-use AgentHarness\Laravel\Runtime\HarnessResult;
 use Closure;
+use Clutch\Laravel\Models\Run;
+use Clutch\Laravel\Models\RunEvent;
+use Clutch\Laravel\Runtime\ClutchResult;
 use Fiber;
 use Illuminate\Contracts\Support\Responsable;
 use IteratorAggregate;
@@ -68,14 +68,14 @@ class StreamedRun implements IteratorAggregate, Responsable
     /**
      * Run to completion and return the terminal result.
      */
-    public function wait(): HarnessResult
+    public function wait(): ClutchResult
     {
         foreach ($this as $event) {
             // Drain the stream; callbacks registered with each() still fire.
             unset($event);
         }
 
-        return HarnessResult::fromRun($this->completedRun ?? $this->run->refresh());
+        return ClutchResult::fromRun($this->completedRun ?? $this->run->refresh());
     }
 
     /**

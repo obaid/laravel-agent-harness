@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Artifacts;
+namespace Clutch\Laravel\Artifacts;
 
-use AgentHarness\Laravel\Models\Artifact as ArtifactModel;
-use AgentHarness\Laravel\Models\Run;
+use Clutch\Laravel\Models\Artifact as ArtifactModel;
+use Clutch\Laravel\Models\Run;
 use Illuminate\Support\Collection;
 
 /**

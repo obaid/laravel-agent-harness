@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Models;
+namespace Clutch\Laravel\Models;
 
-use AgentHarness\Laravel\Approvals\ApprovalBroker;
-use AgentHarness\Laravel\Enums\FailureCategory;
-use AgentHarness\Laravel\Enums\RunStatus;
-use AgentHarness\Laravel\Exceptions\RunNotAuthorized;
-use AgentHarness\Laravel\Models\Concerns\HasHarnessId;
-use AgentHarness\Laravel\Runtime\RunCoordinator;
-use AgentHarness\Laravel\Support\Id;
-use AgentHarness\Laravel\ValueObjects\BudgetUsage;
-use AgentHarness\Laravel\ValueObjects\RunBudget;
+use Clutch\Laravel\Approvals\ApprovalBroker;
+use Clutch\Laravel\Enums\FailureCategory;
+use Clutch\Laravel\Enums\RunStatus;
+use Clutch\Laravel\Exceptions\RunNotAuthorized;
+use Clutch\Laravel\Models\Concerns\HasHarnessId;
+use Clutch\Laravel\Runtime\RunCoordinator;
+use Clutch\Laravel\Support\Id;
+use Clutch\Laravel\ValueObjects\BudgetUsage;
+use Clutch\Laravel\ValueObjects\RunBudget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -59,7 +59,7 @@ class Run extends Model
 {
     use HasHarnessId;
 
-    protected $table = 'agent_harness_runs';
+    protected $table = 'clutch_runs';
 
     protected $guarded = [];
 

@@ -1,4 +1,4 @@
-title: Laravel Agent Harness
+title: Laravel Clutch
 description: Durable, observable agent runtimes for Laravel, built on the official Laravel AI SDK.
 
 # The gem rather than remote_theme: one less network fetch at build time,
@@ -6,7 +6,7 @@ description: Durable, observable agent runtimes for Laravel, built on the offici
 theme: just-the-docs
 
 url: https://obaid.github.io
-baseurl: /laravel-agent-harness
+baseurl: /laravel-clutch
 
 # Rendered as diagrams rather than code blocks.
 mermaid:
@@ -35,7 +35,7 @@ search:
   rel_url: false
 
 aux_links:
-  GitHub: https://github.com/obaid/laravel-agent-harness
+  GitHub: https://github.com/obaid/laravel-clutch
 
 aux_links_new_tab: true
 

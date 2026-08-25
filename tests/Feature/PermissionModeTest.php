@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-use AgentHarness\Laravel\Artifacts\ArtifactRegistrar;
-use AgentHarness\Laravel\Enums\PermissionMode;
-use AgentHarness\Laravel\Facades\Harness;
-use AgentHarness\Laravel\Policies\PolicyAwareTools;
-use AgentHarness\Laravel\Runtime\CancellationSignal;
-use AgentHarness\Laravel\Runtime\HarnessResult;
-use AgentHarness\Laravel\Runtime\RunContext;
-use AgentHarness\Laravel\Tests\Fixtures\Agents\ResearchAgent;
-use AgentHarness\Laravel\Tests\Fixtures\Tools\DraftEmail;
-use AgentHarness\Laravel\Tests\Fixtures\Tools\PublishArticle;
-use AgentHarness\Laravel\Tests\Fixtures\Tools\SearchWeb;
+use Clutch\Laravel\Artifacts\ArtifactRegistrar;
+use Clutch\Laravel\Enums\PermissionMode;
+use Clutch\Laravel\Facades\Clutch;
+use Clutch\Laravel\Policies\PolicyAwareTools;
+use Clutch\Laravel\Runtime\CancellationSignal;
+use Clutch\Laravel\Runtime\ClutchResult;
+use Clutch\Laravel\Runtime\RunContext;
+use Clutch\Laravel\Tests\Fixtures\Agents\ResearchAgent;
+use Clutch\Laravel\Tests\Fixtures\Tools\DraftEmail;
+use Clutch\Laravel\Tests\Fixtures\Tools\PublishArticle;
+use Clutch\Laravel\Tests\Fixtures\Tools\SearchWeb;
 
 /**
  * Run a callback inside a real harness run context for the given mode.
@@ -21,25 +21,25 @@ function withinRun(PermissionMode $mode, Closure $callback): mixed
 {
     $owner = test()->user();
 
-    Harness::fake([HarnessResult::text('ok')]);
+    Clutch::fake([ClutchResult::text('ok')]);
 
-    $session = Harness::agent(ResearchAgent::class)->for($owner)->permissions($mode)->create();
-    $run = Harness::coordinator()->createRun($session, 'Do it.');
+    $session = Clutch::agent(ResearchAgent::class)->for($owner)->permissions($mode)->create();
+    $run = Clutch::coordinator()->createRun($session, 'Do it.');
 
     $context = new RunContext(
         session: $session,
         run: $run,
-        artifacts: new ArtifactRegistrar($run, app(AgentHarness\Laravel\Artifacts\ArtifactManager::class)),
+        artifacts: new ArtifactRegistrar($run, app(\Clutch\Laravel\Artifacts\ArtifactManager::class)),
         cancellation: CancellationSignal::never(),
         logger: app('log'),
-        redactor: app(AgentHarness\Laravel\Runtime\Redactor::class),
+        redactor: app(\Clutch\Laravel\Runtime\Redactor::class),
     );
 
     return $context->scope($callback);
 }
 
 beforeEach(function (): void {
-    config()->set('agent-harness.permissions.tools', [
+    config()->set('clutch.permissions.tools', [
         'draft_email' => 'reversible',
         'publish_article' => 'irreversible',
     ]);
@@ -117,7 +117,7 @@ it('leaves a tool\'s own approval requirement alone', function (): void {
 });
 
 it('honors an always-allow list even under deny-by-default', function (): void {
-    config()->set('agent-harness.permissions.always_allow', ['publish_article']);
+    config()->set('clutch.permissions.always_allow', ['publish_article']);
 
     $tools = withinRun(PermissionMode::DenyByDefault, function (): array {
         return app(PolicyAwareTools::class)->apply([new SearchWeb, new PublishArticle]);
@@ -140,7 +140,7 @@ it('exposes the permission mode to tools through the run context', function (): 
 });
 
 it('is reachable through the facade', function (): void {
-    $tools = withinRun(PermissionMode::DenyByDefault, fn (): array => Harness::policy([new SearchWeb, new PublishArticle]));
+    $tools = withinRun(PermissionMode::DenyByDefault, fn (): array => Clutch::policy([new SearchWeb, new PublishArticle]));
 
     expect($tools)->toHaveCount(1)
         ->and($tools[0])->toBeInstanceOf(SearchWeb::class);

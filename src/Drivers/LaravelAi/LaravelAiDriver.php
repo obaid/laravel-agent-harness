@@ -2,25 +2,25 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Drivers\LaravelAi;
+namespace Clutch\Laravel\Drivers\LaravelAi;
 
-use AgentHarness\Laravel\Budgets\BudgetManager;
-use AgentHarness\Laravel\Budgets\CostEstimator;
-use AgentHarness\Laravel\Contracts\DriverEventSink;
-use AgentHarness\Laravel\Contracts\HarnessDriver;
-use AgentHarness\Laravel\Data\Continuation;
-use AgentHarness\Laravel\Data\DriverCheckpoint;
-use AgentHarness\Laravel\Data\DriverSession;
-use AgentHarness\Laravel\Data\PendingApproval;
-use AgentHarness\Laravel\Data\StartSession;
-use AgentHarness\Laravel\Data\TurnInput;
-use AgentHarness\Laravel\Data\TurnResult;
-use AgentHarness\Laravel\Enums\EventType;
-use AgentHarness\Laravel\Exceptions\DriverFailure;
-use AgentHarness\Laravel\Runtime\CancellationSignal;
-use AgentHarness\Laravel\ValueObjects\BudgetUsage;
-use AgentHarness\Laravel\ValueObjects\DriverCapabilities;
-use AgentHarness\Laravel\ValueObjects\RunBudget;
+use Clutch\Laravel\Budgets\BudgetManager;
+use Clutch\Laravel\Budgets\CostEstimator;
+use Clutch\Laravel\Contracts\ClutchDriver;
+use Clutch\Laravel\Contracts\DriverEventSink;
+use Clutch\Laravel\Data\Continuation;
+use Clutch\Laravel\Data\DriverCheckpoint;
+use Clutch\Laravel\Data\DriverSession;
+use Clutch\Laravel\Data\PendingApproval;
+use Clutch\Laravel\Data\StartSession;
+use Clutch\Laravel\Data\TurnInput;
+use Clutch\Laravel\Data\TurnResult;
+use Clutch\Laravel\Enums\EventType;
+use Clutch\Laravel\Exceptions\DriverFailure;
+use Clutch\Laravel\Runtime\CancellationSignal;
+use Clutch\Laravel\ValueObjects\BudgetUsage;
+use Clutch\Laravel\ValueObjects\DriverCapabilities;
+use Clutch\Laravel\ValueObjects\RunBudget;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
@@ -49,7 +49,7 @@ use Throwable;
  * worker dies mid-request the current step may be repeated, which is why
  * side-effecting tools need an idempotency contract.
  */
-class LaravelAiDriver implements HarnessDriver
+class LaravelAiDriver implements ClutchDriver
 {
     public const SCHEMA_VERSION = 1;
 
@@ -634,7 +634,7 @@ class LaravelAiDriver implements HarnessDriver
         if ($e instanceof RuntimeException && str_contains($e->getMessage(), 'No AI providers were configured')) {
             return new DriverFailure(
                 'No AI provider is configured. Set one up as described in the Laravel AI documentation, '.
-                'or call Harness::fake() in tests.'
+                'or call Clutch::fake() in tests.'
             );
         }
 

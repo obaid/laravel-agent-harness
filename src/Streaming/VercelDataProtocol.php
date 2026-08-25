@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Streaming;
+namespace Clutch\Laravel\Streaming;
 
-use AgentHarness\Laravel\Enums\EventType;
-use AgentHarness\Laravel\Models\RunEvent;
+use Clutch\Laravel\Enums\EventType;
+use Clutch\Laravel\Models\RunEvent;
 
 /**
  * Maps harness events onto Vercel's AI SDK data stream protocol.

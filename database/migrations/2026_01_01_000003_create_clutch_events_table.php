@@ -10,7 +10,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('agent_harness_events', function (Blueprint $table): void {
+        Schema::create('clutch_events', function (Blueprint $table): void {
             $table->string('id', 40)->primary();
             $table->string('session_id', 40);
             $table->string('run_id', 40);
@@ -22,7 +22,7 @@ return new class extends Migration
             $table->timestamp('occurred_at', 6);
 
             $table->foreign('run_id')
-                ->references('id')->on('agent_harness_runs')
+                ->references('id')->on('clutch_runs')
                 ->cascadeOnDelete();
 
             $table->unique(['run_id', 'sequence'], 'ah_events_sequence_unique');
@@ -35,6 +35,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('agent_harness_events');
+        Schema::dropIfExists('clutch_events');
     }
 };

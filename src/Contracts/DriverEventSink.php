@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Contracts;
+namespace Clutch\Laravel\Contracts;
 
-use AgentHarness\Laravel\Data\DriverCheckpoint;
-use AgentHarness\Laravel\Enums\EventType;
+use Clutch\Laravel\Data\DriverCheckpoint;
+use Clutch\Laravel\Enums\EventType;
 
 /**
  * The channel a driver uses to report progress while a turn is in flight.

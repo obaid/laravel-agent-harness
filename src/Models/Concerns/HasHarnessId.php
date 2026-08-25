@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Models\Concerns;
+namespace Clutch\Laravel\Models\Concerns;
 
-use AgentHarness\Laravel\Support\Id;
+use Clutch\Laravel\Support\Id;
 
 /**
  * Assigns a prefixed, sortable identifier before insert so the value is

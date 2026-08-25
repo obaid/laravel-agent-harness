@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Http\Controllers;
+namespace Clutch\Laravel\Http\Controllers;
 
-use AgentHarness\Laravel\Models\Session;
+use Clutch\Laravel\Models\Session;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 

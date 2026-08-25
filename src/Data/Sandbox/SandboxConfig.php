@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Data\Sandbox;
+namespace Clutch\Laravel\Data\Sandbox;
 
 /**
  * What a sandbox should be provisioned with.

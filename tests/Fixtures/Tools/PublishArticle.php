@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Tests\Fixtures\Tools;
+namespace Clutch\Laravel\Tests\Fixtures\Tools;
 
-use AgentHarness\Laravel\Contracts\IdempotentTool;
-use AgentHarness\Laravel\Contracts\SensitiveTool;
-use AgentHarness\Laravel\Data\ToolInvocation;
-use AgentHarness\Laravel\Enums\ToolSensitivity;
+use Clutch\Laravel\Contracts\IdempotentTool;
+use Clutch\Laravel\Contracts\SensitiveTool;
+use Clutch\Laravel\Data\ToolInvocation;
+use Clutch\Laravel\Enums\ToolSensitivity;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Concerns\InteractsWithApprovals;
 use Laravel\Ai\Contracts\Approvable;

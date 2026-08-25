@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Contracts;
+namespace Clutch\Laravel\Contracts;
 
-use AgentHarness\Laravel\Data\Continuation;
-use AgentHarness\Laravel\Data\DriverCheckpoint;
-use AgentHarness\Laravel\Data\DriverSession;
-use AgentHarness\Laravel\Data\StartSession;
-use AgentHarness\Laravel\Data\TurnInput;
-use AgentHarness\Laravel\Data\TurnResult;
-use AgentHarness\Laravel\Runtime\CancellationSignal;
-use AgentHarness\Laravel\ValueObjects\DriverCapabilities;
+use Clutch\Laravel\Data\Continuation;
+use Clutch\Laravel\Data\DriverCheckpoint;
+use Clutch\Laravel\Data\DriverSession;
+use Clutch\Laravel\Data\StartSession;
+use Clutch\Laravel\Data\TurnInput;
+use Clutch\Laravel\Data\TurnResult;
+use Clutch\Laravel\Runtime\CancellationSignal;
+use Clutch\Laravel\ValueObjects\DriverCapabilities;
 
 /**
  * A runtime the harness can own the lifecycle of.
@@ -19,7 +19,7 @@ use AgentHarness\Laravel\ValueObjects\DriverCapabilities;
  * Drivers never touch harness storage. They receive typed input, emit events
  * through the sink, and return a result or a checkpoint.
  */
-interface HarnessDriver
+interface ClutchDriver
 {
     /**
      * The name this driver is registered under.

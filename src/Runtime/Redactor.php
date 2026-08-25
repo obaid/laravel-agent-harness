@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Runtime;
+namespace Clutch\Laravel\Runtime;
 
-use AgentHarness\Laravel\Contracts\EventSerializer;
+use Clutch\Laravel\Contracts\EventSerializer;
 
 /**
  * Removes sensitive values before persistence, not merely before display.

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Artifacts;
+namespace Clutch\Laravel\Artifacts;
 
-use AgentHarness\Laravel\Enums\ArtifactKind;
+use Clutch\Laravel\Enums\ArtifactKind;
 use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
 
@@ -51,7 +51,7 @@ final class Artifact
     public static function fromContents(string $contents, string $path, ?string $disk = null): self
     {
         return new self(
-            $disk ?? (string) config('agent-harness.artifacts.disk', 'local'),
+            $disk ?? (string) config('clutch.artifacts.disk', 'local'),
             $path,
             $contents,
         );

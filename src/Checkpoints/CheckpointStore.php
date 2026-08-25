@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Checkpoints;
+namespace Clutch\Laravel\Checkpoints;
 
-use AgentHarness\Laravel\Data\DriverCheckpoint;
-use AgentHarness\Laravel\Exceptions\CheckpointIncompatible;
-use AgentHarness\Laravel\Models\Checkpoint;
-use AgentHarness\Laravel\Models\Run;
-use AgentHarness\Laravel\Models\Session;
-use AgentHarness\Laravel\Runtime\Redactor;
-use AgentHarness\Laravel\Support\Id;
+use Clutch\Laravel\Data\DriverCheckpoint;
+use Clutch\Laravel\Exceptions\CheckpointIncompatible;
+use Clutch\Laravel\Models\Checkpoint;
+use Clutch\Laravel\Models\Run;
+use Clutch\Laravel\Models\Session;
+use Clutch\Laravel\Runtime\Redactor;
+use Clutch\Laravel\Support\Id;
 use Illuminate\Support\Carbon;
 use LogicException;
 

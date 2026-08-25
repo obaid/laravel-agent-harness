@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-use AgentHarness\Laravel\Http\Controllers\ApprovalController;
-use AgentHarness\Laravel\Http\Controllers\ArtifactController;
-use AgentHarness\Laravel\Http\Controllers\RunController;
-use AgentHarness\Laravel\Http\Controllers\RunEventStreamController;
-use AgentHarness\Laravel\Http\Controllers\SessionController;
+use Clutch\Laravel\Http\Controllers\ApprovalController;
+use Clutch\Laravel\Http\Controllers\ArtifactController;
+use Clutch\Laravel\Http\Controllers\RunController;
+use Clutch\Laravel\Http\Controllers\RunEventStreamController;
+use Clutch\Laravel\Http\Controllers\SessionController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Route;
 | Agent Harness Routes
 |--------------------------------------------------------------------------
 |
-| Registered only when `agent-harness.routes.enabled` is true. Every route is
+| Registered only when `clutch.routes.enabled` is true. Every route is
 | participant-scoped: a run or session belonging to another participant is not
 | reachable through any of them.
 |

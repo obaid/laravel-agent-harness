@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Contracts;
+namespace Clutch\Laravel\Contracts;
 
 /**
  * Application-supplied control over what a tool's arguments and results

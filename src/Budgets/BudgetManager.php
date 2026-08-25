@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Budgets;
+namespace Clutch\Laravel\Budgets;
 
-use AgentHarness\Laravel\Models\Run;
-use AgentHarness\Laravel\Models\Session;
-use AgentHarness\Laravel\ValueObjects\BudgetUsage;
-use AgentHarness\Laravel\ValueObjects\RunBudget;
+use Clutch\Laravel\Models\Run;
+use Clutch\Laravel\Models\Session;
+use Clutch\Laravel\ValueObjects\BudgetUsage;
+use Clutch\Laravel\ValueObjects\RunBudget;
 
 /**
  * Combines configured, session, and run budgets and decides when to stop.

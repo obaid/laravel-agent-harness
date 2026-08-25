@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Events;
+namespace Clutch\Laravel\Events;
 
-use AgentHarness\Laravel\Models\RunEvent;
+use Clutch\Laravel\Models\RunEvent;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -17,7 +17,7 @@ use Illuminate\Queue\SerializesModels;
  * Applications listen to this for auditing, analytics, metering, notifications
  * or custom broadcasting without depending on any transport format.
  */
-class HarnessEventRecorded implements ShouldBroadcast
+class ClutchEventRecorded implements ShouldBroadcast
 {
     use Dispatchable;
     use SerializesModels;
@@ -52,13 +52,13 @@ class HarnessEventRecorded implements ShouldBroadcast
      */
     public function broadcastOn(): array
     {
-        if (config('agent-harness.events.broadcast', true) !== true) {
+        if (config('clutch.events.broadcast', true) !== true) {
             return [];
         }
 
         return [
-            new PrivateChannel("agent-harness.run.{$this->runId}"),
-            new PrivateChannel("agent-harness.session.{$this->sessionId}"),
+            new PrivateChannel("clutch.run.{$this->runId}"),
+            new PrivateChannel("clutch.session.{$this->sessionId}"),
         ];
     }
 

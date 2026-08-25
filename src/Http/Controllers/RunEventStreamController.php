@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Http\Controllers;
+namespace Clutch\Laravel\Http\Controllers;
 
-use AgentHarness\Laravel\Models\Run;
-use AgentHarness\Laravel\Runtime\EventStore;
-use AgentHarness\Laravel\Streaming\EventStreamResponse;
+use Clutch\Laravel\Models\Run;
+use Clutch\Laravel\Runtime\EventStore;
+use Clutch\Laravel\Streaming\EventStreamResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 

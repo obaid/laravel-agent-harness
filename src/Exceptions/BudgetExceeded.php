@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Exceptions;
+namespace Clutch\Laravel\Exceptions;
 
-final class BudgetExceeded extends HarnessException
+final class BudgetExceeded extends ClutchException
 {
     public function errorCode(): string
     {

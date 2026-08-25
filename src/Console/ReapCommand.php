@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Console;
+namespace Clutch\Laravel\Console;
 
-use AgentHarness\Laravel\Jobs\ReapAbandonedRuns;
+use Clutch\Laravel\Jobs\ReapAbandonedRuns;
 use Illuminate\Console\Command;
 
 class ReapCommand extends Command
 {
-    protected $signature = 'harness:reap
+    protected $signature = 'clutch:reap
         {--stale-after= : Seconds without a heartbeat before a run counts as abandoned}
         {--no-retry : Fail abandoned runs without queueing a new attempt}';
 
@@ -19,7 +19,7 @@ class ReapCommand extends Command
     {
         $job = new ReapAbandonedRuns(
             staleAfterSeconds: (int) ($this->option('stale-after')
-                ?? config('agent-harness.recovery.stale_after_seconds', 300)),
+                ?? config('clutch.recovery.stale_after_seconds', 300)),
             retry: ! $this->option('no-retry'),
         );
 

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use AgentHarness\Laravel\Support\Id;
+use Clutch\Laravel\Support\Id;
 
 it('generates a prefixed identifier for each record type', function (): void {
     expect(Id::session())->toStartWith('ses_')

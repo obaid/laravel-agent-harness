@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Console;
+namespace Clutch\Laravel\Console;
 
-use AgentHarness\Laravel\Models\Run;
-use AgentHarness\Laravel\Models\RunEvent;
+use Clutch\Laravel\Models\Run;
+use Clutch\Laravel\Models\RunEvent;
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
 
 class EventsCommand extends Command
 {
-    protected $signature = 'harness:events
+    protected $signature = 'clutch:events
         {run : The run identifier}
         {--after=0 : Only show events after this sequence}
         {--type=* : Only show these event types}

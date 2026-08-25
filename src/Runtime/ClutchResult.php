@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Runtime;
+namespace Clutch\Laravel\Runtime;
 
-use AgentHarness\Laravel\Data\PendingApproval;
-use AgentHarness\Laravel\Enums\RunStatus;
-use AgentHarness\Laravel\Models\Approval;
-use AgentHarness\Laravel\Models\Artifact;
-use AgentHarness\Laravel\Models\Run;
-use AgentHarness\Laravel\Testing\ScriptedResponse;
-use AgentHarness\Laravel\ValueObjects\BudgetUsage;
-use AgentHarness\Laravel\ValueObjects\NormalizedFailure;
+use Clutch\Laravel\Data\PendingApproval;
+use Clutch\Laravel\Enums\RunStatus;
+use Clutch\Laravel\Models\Approval;
+use Clutch\Laravel\Models\Artifact;
+use Clutch\Laravel\Models\Run;
+use Clutch\Laravel\Testing\ScriptedResponse;
+use Clutch\Laravel\ValueObjects\BudgetUsage;
+use Clutch\Laravel\ValueObjects\NormalizedFailure;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Support\Collection;
 use Stringable;
@@ -21,7 +21,7 @@ use Stringable;
  *
  * @implements Arrayable<string, mixed>
  */
-class HarnessResult implements Arrayable, Stringable
+class ClutchResult implements Arrayable, Stringable
 {
     /**
      * @param  Collection<int, Artifact>  $artifacts
@@ -62,7 +62,7 @@ class HarnessResult implements Arrayable, Stringable
 
     // Test scripting helpers ---------------------------------------------
     //
-    // These build scripted outcomes for `Harness::fake()`. They live here so a
+    // These build scripted outcomes for `Clutch::fake()`. They live here so a
     // test reads the way the production call does.
 
     /**

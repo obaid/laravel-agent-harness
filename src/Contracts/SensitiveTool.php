@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Contracts;
+namespace Clutch\Laravel\Contracts;
 
-use AgentHarness\Laravel\Enums\ToolSensitivity;
+use Clutch\Laravel\Enums\ToolSensitivity;
 
 /**
  * A tool that classifies its own risk so the policy engine does not have to guess.

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Policies;
+namespace Clutch\Laravel\Policies;
 
-use AgentHarness\Laravel\Enums\PermissionMode;
-use AgentHarness\Laravel\Runtime\RunContext;
+use Clutch\Laravel\Enums\PermissionMode;
+use Clutch\Laravel\Runtime\RunContext;
 use Laravel\Ai\Contracts\Approvable;
 
 /**
@@ -17,7 +17,7 @@ use Laravel\Ai\Contracts\Approvable;
  *
  *     public function tools(): iterable
  *     {
- *         return Harness::policy([new SearchWeb, new PublishArticle]);
+ *         return Clutch::policy([new SearchWeb, new PublishArticle]);
  *     }
  *
  * Outside a harness run this is a no-op, so the same agent still behaves
@@ -96,7 +96,7 @@ class PolicyAwareTools
     public function currentMode(): PermissionMode
     {
         return RunContext::current()?->permissionMode()
-            ?? PermissionMode::tryFrom((string) config('agent-harness.permissions.default'))
+            ?? PermissionMode::tryFrom((string) config('clutch.permissions.default'))
             ?? PermissionMode::ApproveSensitive;
     }
 }

@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Console;
+namespace Clutch\Laravel\Console;
 
-use AgentHarness\Laravel\Models\Run;
+use Clutch\Laravel\Models\Run;
 use Illuminate\Console\Command;
 
 class CancelRunCommand extends Command
 {
-    protected $signature = 'harness:cancel {run : The run identifier} {--reason= : Why the run is being cancelled}';
+    protected $signature = 'clutch:cancel {run : The run identifier} {--reason= : Why the run is being cancelled}';
 
     protected $description = 'Request cooperative cancellation of a run';
 

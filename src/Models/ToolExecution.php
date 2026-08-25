@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Models;
+namespace Clutch\Laravel\Models;
 
-use AgentHarness\Laravel\Models\Concerns\HasHarnessId;
-use AgentHarness\Laravel\Support\Id;
+use Clutch\Laravel\Models\Concerns\HasHarnessId;
+use Clutch\Laravel\Support\Id;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -37,7 +37,7 @@ class ToolExecution extends Model
 
     use HasHarnessId;
 
-    protected $table = 'agent_harness_tool_executions';
+    protected $table = 'clutch_tool_executions';
 
     protected $guarded = [];
 

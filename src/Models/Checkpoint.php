@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Models;
+namespace Clutch\Laravel\Models;
 
-use AgentHarness\Laravel\Data\DriverCheckpoint;
-use AgentHarness\Laravel\Models\Concerns\HasHarnessId;
-use AgentHarness\Laravel\Support\Id;
+use Clutch\Laravel\Data\DriverCheckpoint;
+use Clutch\Laravel\Models\Concerns\HasHarnessId;
+use Clutch\Laravel\Support\Id;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -34,7 +34,7 @@ class Checkpoint extends Model
 
     public $timestamps = false;
 
-    protected $table = 'agent_harness_checkpoints';
+    protected $table = 'clutch_checkpoints';
 
     protected $guarded = [];
 

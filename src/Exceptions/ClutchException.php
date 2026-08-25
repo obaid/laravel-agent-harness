@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Exceptions;
+namespace Clutch\Laravel\Exceptions;
 
 use RuntimeException;
 
@@ -12,7 +12,7 @@ use RuntimeException;
  * Messages on these exceptions are safe to render. Provider bodies, credentials
  * and stack detail belong on the previous exception and in protected logs.
  */
-abstract class HarnessException extends RuntimeException
+abstract class ClutchException extends RuntimeException
 {
     /**
      * Get the machine-readable code applications can switch on.

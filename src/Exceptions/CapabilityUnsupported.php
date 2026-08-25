@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Exceptions;
+namespace Clutch\Laravel\Exceptions;
 
-final class HarnessCapabilityUnsupported extends HarnessException
+final class CapabilityUnsupported extends ClutchException
 {
     public function errorCode(): string
     {
@@ -19,7 +19,7 @@ final class HarnessCapabilityUnsupported extends HarnessException
     public static function for(string $driver, string $capability): self
     {
         return new self(
-            "The [{$driver}] harness driver does not support [{$capability}]. ".
+            "The [{$driver}] driver does not support [{$capability}]. ".
             'The harness will not silently degrade a requested safety or durability feature.'
         );
     }

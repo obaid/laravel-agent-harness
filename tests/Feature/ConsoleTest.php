@@ -2,24 +2,24 @@
 
 declare(strict_types=1);
 
-use AgentHarness\Laravel\Enums\RunStatus;
-use AgentHarness\Laravel\Facades\Harness;
-use AgentHarness\Laravel\Models\Checkpoint;
-use AgentHarness\Laravel\Models\RunEvent;
-use AgentHarness\Laravel\Runtime\HarnessResult;
-use AgentHarness\Laravel\Tests\Fixtures\Agents\ResearchAgent;
+use Clutch\Laravel\Enums\RunStatus;
+use Clutch\Laravel\Facades\Clutch;
+use Clutch\Laravel\Models\Checkpoint;
+use Clutch\Laravel\Models\RunEvent;
+use Clutch\Laravel\Runtime\ClutchResult;
+use Clutch\Laravel\Tests\Fixtures\Agents\ResearchAgent;
 use Illuminate\Support\Facades\Artisan;
 
 beforeEach(function (): void {
     $this->owner = $this->user();
-    $this->harness = Harness::fake([HarnessResult::text('The report is ready.')]);
-    $this->session = Harness::agent(ResearchAgent::class)->for($this->owner)->name('Research')->create();
+    $this->clutch = Clutch::fake([ClutchResult::text('The report is ready.')]);
+    $this->session = Clutch::agent(ResearchAgent::class)->for($this->owner)->name('Research')->create();
 });
 
 it('lists sessions', function (): void {
     // Table output goes through Symfony's renderer rather than the console
     // helpers expectsOutputToContain() observes, so this reads the real buffer.
-    expect(Artisan::call('harness:sessions'))->toBe(0);
+    expect(Artisan::call('clutch:sessions'))->toBe(0);
 
     expect(Artisan::output())
         ->toContain($this->session->id)
@@ -31,15 +31,15 @@ it('lists sessions', function (): void {
 it('reports when there are no sessions to list', function (): void {
     $this->session->forceDelete();
 
-    $this->artisan('harness:sessions')
-        ->expectsOutputToContain('No harness sessions found.')
+    $this->artisan('clutch:sessions')
+        ->expectsOutputToContain('No Clutch sessions found.')
         ->assertSuccessful();
 });
 
 it('inspects a run', function (): void {
     $run = $this->session->prompt('Write the report.')->run;
 
-    $this->artisan("harness:run {$run->id}")
+    $this->artisan("clutch:run {$run->id}")
         ->expectsOutputToContain($run->id)
         ->expectsOutputToContain('completed')
         ->expectsOutputToContain('The report is ready.')
@@ -47,7 +47,7 @@ it('inspects a run', function (): void {
 });
 
 it('fails cleanly on an unknown run', function (): void {
-    $this->artisan('harness:run run_does_not_exist')
+    $this->artisan('clutch:run run_does_not_exist')
         ->expectsOutputToContain('No run found')
         ->assertFailed();
 });
@@ -55,7 +55,7 @@ it('fails cleanly on an unknown run', function (): void {
 it('replays events for a run', function (): void {
     $run = $this->session->prompt('Write the report.')->run;
 
-    $this->artisan("harness:events {$run->id}")
+    $this->artisan("clutch:events {$run->id}")
         ->expectsOutputToContain('run.created')
         ->expectsOutputToContain('run.completed')
         ->assertSuccessful();
@@ -64,9 +64,9 @@ it('replays events for a run', function (): void {
 it('redacts sensitive values in event output because they never reached storage', function (): void {
     $run = $this->session->prompt('Write the report.')->run;
 
-    app(AgentHarness\Laravel\Runtime\EventStore::class)->append(
+    app(\Clutch\Laravel\Runtime\EventStore::class)->append(
         $run,
-        AgentHarness\Laravel\Enums\EventType::DriverEvent,
+        \Clutch\Laravel\Enums\EventType::DriverEvent,
         ['api_key' => 'sk-live-should-never-persist', 'note' => 'visible'],
     );
 
@@ -75,15 +75,15 @@ it('redacts sensitive values in event output because they never reached storage'
     expect($stored->payload['api_key'])->toBe('[REDACTED]')
         ->and($stored->payload['note'])->toBe('visible');
 
-    $this->artisan("harness:events {$run->id} --payloads")
+    $this->artisan("clutch:events {$run->id} --payloads")
         ->doesntExpectOutputToContain('sk-live-should-never-persist')
         ->assertSuccessful();
 });
 
 it('cancels a run from the console', function (): void {
-    $run = Harness::coordinator()->createRun($this->session, 'A long job.');
+    $run = Clutch::coordinator()->createRun($this->session, 'A long job.');
 
-    $this->artisan("harness:cancel {$run->id} --reason=\"No longer needed\"")
+    $this->artisan("clutch:cancel {$run->id} --reason=\"No longer needed\"")
         ->assertSuccessful();
 
     expect($run->refresh()->status)->toBe(RunStatus::Cancelled);
@@ -92,7 +92,7 @@ it('cancels a run from the console', function (): void {
 it('says so when cancelling an already-finished run', function (): void {
     $run = $this->session->prompt('Write the report.')->run;
 
-    $this->artisan("harness:cancel {$run->id}")
+    $this->artisan("clutch:cancel {$run->id}")
         ->expectsOutputToContain('already finished')
         ->assertSuccessful();
 });
@@ -100,17 +100,17 @@ it('says so when cancelling an already-finished run', function (): void {
 it('queues a retry from the console', function (): void {
     $run = $this->session->prompt('Write the report.')->run;
 
-    $this->harness->script([HarnessResult::text('Second attempt.')]);
+    $this->clutch->script([ClutchResult::text('Second attempt.')]);
 
-    $this->artisan("harness:retry {$run->id} --reset-budget")
+    $this->artisan("clutch:retry {$run->id} --reset-budget")
         ->expectsOutputToContain('Queued attempt 2')
         ->assertSuccessful();
 });
 
 it('refuses to retry a run that is still going', function (): void {
-    $run = Harness::coordinator()->createRun($this->session, 'A long job.');
+    $run = Clutch::coordinator()->createRun($this->session, 'A long job.');
 
-    $this->artisan("harness:retry {$run->id}")
+    $this->artisan("clutch:retry {$run->id}")
         ->expectsOutputToContain('Cancel it before retrying')
         ->assertFailed();
 });
@@ -124,7 +124,7 @@ it('prunes aged records without touching the resume point', function (): void {
 
     $checkpointsBefore = Checkpoint::query()->count();
 
-    $this->artisan('harness:prune')->assertSuccessful();
+    $this->artisan('clutch:prune')->assertSuccessful();
 
     expect(RunEvent::query()->where('run_id', $run->id)->count())->toBe(0);
 
@@ -134,11 +134,11 @@ it('prunes aged records without touching the resume point', function (): void {
 });
 
 it('keeps data an unfinished run still needs', function (): void {
-    $run = Harness::coordinator()->createRun($this->session, 'Still going.');
+    $run = Clutch::coordinator()->createRun($this->session, 'Still going.');
 
     RunEvent::query()->update(['occurred_at' => now()->subDays(400)]);
 
-    $this->artisan('harness:prune')->assertSuccessful();
+    $this->artisan('clutch:prune')->assertSuccessful();
 
     expect(RunEvent::query()->where('run_id', $run->id)->count())->toBeGreaterThan(0);
 });
@@ -146,19 +146,19 @@ it('keeps data an unfinished run still needs', function (): void {
 it('reports when nothing is old enough to prune', function (): void {
     $this->session->prompt('Write the report.');
 
-    $this->artisan('harness:prune')
+    $this->artisan('clutch:prune')
         ->expectsOutputToContain('Nothing was old enough to prune.')
         ->assertSuccessful();
 });
 
 it('sweeps for abandoned runs', function (): void {
-    $this->artisan('harness:reap')
+    $this->artisan('clutch:reap')
         ->expectsOutputToContain('Abandoned run sweep complete.')
         ->assertSuccessful();
 });
 
 it('generates an agent that can carry a durable session', function (): void {
-    $this->artisan('make:harness-agent', ['name' => 'SupportAgent'])->assertSuccessful();
+    $this->artisan('make:clutch-agent', ['name' => 'SupportAgent'])->assertSuccessful();
 
     $path = app_path('Ai/Agents/SupportAgent.php');
 

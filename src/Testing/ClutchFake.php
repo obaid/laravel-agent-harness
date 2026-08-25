@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Testing;
+namespace Clutch\Laravel\Testing;
 
-use AgentHarness\Laravel\Drivers\FakeDriver;
-use AgentHarness\Laravel\Enums\ApprovalStatus;
-use AgentHarness\Laravel\Enums\RunStatus;
-use AgentHarness\Laravel\HarnessManager;
-use AgentHarness\Laravel\Models\Approval;
-use AgentHarness\Laravel\Models\Artifact;
-use AgentHarness\Laravel\Models\Run;
-use AgentHarness\Laravel\Models\Session;
-use AgentHarness\Laravel\Runtime\DriverRegistry;
-use AgentHarness\Laravel\Runtime\RunCoordinator;
 use Closure;
+use Clutch\Laravel\ClutchManager;
+use Clutch\Laravel\Drivers\FakeDriver;
+use Clutch\Laravel\Enums\ApprovalStatus;
+use Clutch\Laravel\Enums\RunStatus;
+use Clutch\Laravel\Models\Approval;
+use Clutch\Laravel\Models\Artifact;
+use Clutch\Laravel\Models\Run;
+use Clutch\Laravel\Models\Session;
+use Clutch\Laravel\Runtime\DriverRegistry;
+use Clutch\Laravel\Runtime\RunCoordinator;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Support\Collection;
 use PHPUnit\Framework\Assert as PHPUnit;
@@ -26,7 +26,7 @@ use PHPUnit\Framework\Assert as PHPUnit;
  * a test exercises the real coordinator, event store, approvals and artifacts
  * against a model that never calls a provider.
  */
-class HarnessFake extends HarnessManager
+class ClutchFake extends ClutchManager
 {
     protected FakeDriver $driver;
 
@@ -55,7 +55,7 @@ class HarnessFake extends HarnessManager
 
         // Queued runs complete within the test rather than piling up in a fake
         // queue, so an assertion about the outcome is meaningful.
-        $this->container['config']->set('agent-harness.queue.connection', 'sync');
+        $this->container['config']->set('clutch.queue.connection', 'sync');
 
         return $this;
     }
@@ -275,7 +275,7 @@ class HarnessFake extends HarnessManager
     public function assertEventRecorded(string $type): static
     {
         PHPUnit::assertTrue(
-            \AgentHarness\Laravel\Models\RunEvent::query()->where('type', $type)->exists(),
+            \Clutch\Laravel\Models\RunEvent::query()->where('type', $type)->exists(),
             "Expected an event of type [{$type}] to have been recorded.",
         );
 

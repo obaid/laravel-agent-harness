@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Jobs;
+namespace Clutch\Laravel\Jobs;
 
-use AgentHarness\Laravel\Exceptions\LeaseUnavailable;
-use AgentHarness\Laravel\Exceptions\RunNotFound;
-use AgentHarness\Laravel\Runtime\RunCoordinator;
+use Clutch\Laravel\Exceptions\LeaseUnavailable;
+use Clutch\Laravel\Exceptions\RunNotFound;
+use Clutch\Laravel\Runtime\RunCoordinator;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -36,11 +36,11 @@ class ContinueAgentRun implements ShouldQueue
         try {
             $coordinator->continueRun($this->runId);
         } catch (LeaseUnavailable) {
-            $logger->info('Harness continuation skipped; the session lease is held elsewhere.', [
+            $logger->info('Clutch continuation skipped; the session lease is held elsewhere.', [
                 'run_id' => $this->runId,
             ]);
         } catch (RunNotFound) {
-            $logger->info('Harness run no longer exists; nothing to continue.', ['run_id' => $this->runId]);
+            $logger->info('Clutch run no longer exists; nothing to continue.', ['run_id' => $this->runId]);
         }
     }
 
@@ -49,6 +49,6 @@ class ContinueAgentRun implements ShouldQueue
      */
     public function tags(): array
     {
-        return ['agent-harness', "run:{$this->runId}"];
+        return ['clutch', "run:{$this->runId}"];
     }
 }

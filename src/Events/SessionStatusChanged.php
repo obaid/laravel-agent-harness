@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Events;
+namespace Clutch\Laravel\Events;
 
-use AgentHarness\Laravel\Enums\SessionStatus;
+use Clutch\Laravel\Enums\SessionStatus;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 

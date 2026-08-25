@@ -10,7 +10,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('agent_harness_tool_executions', function (Blueprint $table): void {
+        Schema::create('clutch_tool_executions', function (Blueprint $table): void {
             $table->string('id', 40)->primary();
             $table->string('session_id', 40);
             $table->string('run_id', 40);
@@ -35,7 +35,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreign('run_id')
-                ->references('id')->on('agent_harness_runs')
+                ->references('id')->on('clutch_runs')
                 ->cascadeOnDelete();
 
             // One durable record per side effect, scoped to the owning session
@@ -48,6 +48,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('agent_harness_tool_executions');
+        Schema::dropIfExists('clutch_tool_executions');
     }
 };

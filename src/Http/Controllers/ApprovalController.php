@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Http\Controllers;
+namespace Clutch\Laravel\Http\Controllers;
 
-use AgentHarness\Laravel\Approvals\ApprovalBroker;
-use AgentHarness\Laravel\Models\Approval;
-use AgentHarness\Laravel\Runtime\RunCoordinator;
+use Clutch\Laravel\Approvals\ApprovalBroker;
+use Clutch\Laravel\Models\Approval;
+use Clutch\Laravel\Runtime\RunCoordinator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -73,9 +73,9 @@ class ApprovalController
         ]);
     }
 
-    protected function run(Request $request, string $run): \AgentHarness\Laravel\Models\Run
+    protected function run(Request $request, string $run): \Clutch\Laravel\Models\Run
     {
-        return \AgentHarness\Laravel\Models\Run::query()
+        return \Clutch\Laravel\Models\Run::query()
             ->with('session')
             ->findOrFail($run)
             ->authorizeFor($request->user());

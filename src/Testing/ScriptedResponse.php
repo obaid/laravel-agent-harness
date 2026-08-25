@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Testing;
+namespace Clutch\Laravel\Testing;
 
-use AgentHarness\Laravel\Artifacts\Artifact;
-use AgentHarness\Laravel\Data\PendingApproval;
-use AgentHarness\Laravel\ValueObjects\BudgetUsage;
+use Clutch\Laravel\Artifacts\Artifact;
+use Clutch\Laravel\Data\PendingApproval;
+use Clutch\Laravel\ValueObjects\BudgetUsage;
 
 /**
  * One scripted outcome for the fake driver.
  *
- * Built through the static helpers on `HarnessResult`, which read naturally at
- * the call site: `HarnessResult::text('...')`.
+ * Built through the static helpers on `ClutchResult`, which read naturally at
+ * the call site: `ClutchResult::text('...')`.
  */
 final class ScriptedResponse
 {

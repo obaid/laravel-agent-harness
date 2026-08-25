@@ -2,26 +2,26 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Console;
+namespace Clutch\Laravel\Console;
 
-use AgentHarness\Laravel\Jobs\PruneAgentHarnessRecords;
+use Clutch\Laravel\Jobs\PruneClutchRecords;
 use Illuminate\Console\Command;
 
 class PruneCommand extends Command
 {
-    protected $signature = 'harness:prune
+    protected $signature = 'clutch:prune
         {--batch=1000 : How many records of each type to remove per pass}
         {--passes=1 : How many passes to run}
         {--delete-files : Also delete artifact bytes from storage}';
 
-    protected $description = 'Prune aged harness records within the configured retention windows';
+    protected $description = 'Prune aged Clutch records within the configured retention windows';
 
     public function handle(): int
     {
         $totals = [];
 
         for ($pass = 0; $pass < (int) $this->option('passes'); $pass++) {
-            $removed = (new PruneAgentHarnessRecords(
+            $removed = (new PruneClutchRecords(
                 batchSize: (int) $this->option('batch'),
                 deleteArtifactFiles: (bool) $this->option('delete-files'),
             ))->handle();

@@ -10,7 +10,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('agent_harness_artifacts', function (Blueprint $table): void {
+        Schema::create('clutch_artifacts', function (Blueprint $table): void {
             $table->string('id', 40)->primary();
             $table->string('session_id', 40);
             $table->string('run_id', 40)->nullable();
@@ -30,7 +30,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreign('session_id')
-                ->references('id')->on('agent_harness_sessions')
+                ->references('id')->on('clutch_sessions')
                 ->cascadeOnDelete();
 
             $table->index(['session_id', 'created_at'], 'ah_artifacts_session_index');
@@ -41,6 +41,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('agent_harness_artifacts');
+        Schema::dropIfExists('clutch_artifacts');
     }
 };

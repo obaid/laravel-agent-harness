@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Testing;
+namespace Clutch\Laravel\Testing;
 
-use AgentHarness\Laravel\Contracts\HarnessDriver;
-use AgentHarness\Laravel\Data\ApprovalDecision;
-use AgentHarness\Laravel\Data\Continuation;
-use AgentHarness\Laravel\Data\StartSession;
-use AgentHarness\Laravel\Data\TurnInput;
-use AgentHarness\Laravel\Data\TurnResult;
-use AgentHarness\Laravel\Enums\PermissionMode;
-use AgentHarness\Laravel\Runtime\CancellationSignal;
-use AgentHarness\Laravel\Runtime\Redactor;
+use Clutch\Laravel\Contracts\ClutchDriver;
+use Clutch\Laravel\Data\ApprovalDecision;
+use Clutch\Laravel\Data\Continuation;
+use Clutch\Laravel\Data\StartSession;
+use Clutch\Laravel\Data\TurnInput;
+use Clutch\Laravel\Data\TurnResult;
+use Clutch\Laravel\Enums\PermissionMode;
+use Clutch\Laravel\Runtime\CancellationSignal;
+use Clutch\Laravel\Runtime\Redactor;
 use PHPUnit\Framework\Assert as PHPUnit;
 
 /**
@@ -38,12 +38,12 @@ final class DriverContractTests
     private array $skipped = [];
 
     private function __construct(
-        private readonly HarnessDriver $driver,
+        private readonly ClutchDriver $driver,
         private readonly string $sessionId = 'ses_contract',
         private readonly ?string $agentClass = null,
     ) {}
 
-    public static function for(HarnessDriver $driver, ?string $agentClass = null): self
+    public static function for(ClutchDriver $driver, ?string $agentClass = null): self
     {
         return new self($driver, agentClass: $agentClass);
     }
@@ -329,7 +329,7 @@ final class DriverContractTests
 
     // Helpers ------------------------------------------------------------
 
-    private function start(): \AgentHarness\Laravel\Data\DriverSession
+    private function start(): \Clutch\Laravel\Data\DriverSession
     {
         return $this->driver->start(new StartSession(
             sessionId: $this->sessionId,

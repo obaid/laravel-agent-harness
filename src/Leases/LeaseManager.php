@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Leases;
+namespace Clutch\Laravel\Leases;
 
-use AgentHarness\Laravel\Exceptions\LeaseUnavailable;
 use Closure;
+use Clutch\Laravel\Exceptions\LeaseUnavailable;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Support\Str;
@@ -33,7 +33,7 @@ class LeaseManager
      */
     public function keyFor(string $sessionId): string
     {
-        return "agent-harness:session:{$sessionId}";
+        return "clutch:session:{$sessionId}";
     }
 
     /**
@@ -79,8 +79,8 @@ class LeaseManager
             // exactly the failure this package exists to prevent. Every cache
             // store Laravel ships except "null" supports atomic locks.
             throw new LeaseUnavailable(
-                'The cache store backing agent-harness leases does not support atomic locks, so the harness '.
-                'cannot guarantee one worker per session. Point [agent-harness.leases.store] at a lock-capable '.
+                'The cache store backing Clutch leases does not support atomic locks, so Clutch '.
+                'cannot guarantee one worker per session. Point [clutch.leases.store] at a lock-capable '.
                 'store such as redis, memcached, database, file, or array.'
             );
         }

@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use AgentHarness\Laravel\Contracts\EventSerializer;
-use AgentHarness\Laravel\Runtime\Redactor;
+use Clutch\Laravel\Contracts\EventSerializer;
+use Clutch\Laravel\Runtime\Redactor;
 
 beforeEach(function (): void {
     $this->redactor = new Redactor(['authorization', 'api_key', 'token', 'password']);

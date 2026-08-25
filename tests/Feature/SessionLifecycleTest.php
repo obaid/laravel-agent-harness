@@ -2,28 +2,28 @@
 
 declare(strict_types=1);
 
-use AgentHarness\Laravel\Enums\PermissionMode;
-use AgentHarness\Laravel\Enums\RunStatus;
-use AgentHarness\Laravel\Enums\SessionStatus;
-use AgentHarness\Laravel\Exceptions\RunNotAuthorized;
-use AgentHarness\Laravel\Exceptions\SessionBusy;
-use AgentHarness\Laravel\Facades\Harness;
-use AgentHarness\Laravel\Models\Run;
-use AgentHarness\Laravel\Models\Session;
-use AgentHarness\Laravel\Runtime\HarnessResult;
-use AgentHarness\Laravel\Tests\Fixtures\Agents\ResearchAgent;
-use AgentHarness\Laravel\ValueObjects\RunBudget;
+use Clutch\Laravel\Enums\PermissionMode;
+use Clutch\Laravel\Enums\RunStatus;
+use Clutch\Laravel\Enums\SessionStatus;
+use Clutch\Laravel\Exceptions\RunNotAuthorized;
+use Clutch\Laravel\Exceptions\SessionBusy;
+use Clutch\Laravel\Facades\Clutch;
+use Clutch\Laravel\Models\Run;
+use Clutch\Laravel\Models\Session;
+use Clutch\Laravel\Runtime\ClutchResult;
+use Clutch\Laravel\Tests\Fixtures\Agents\ResearchAgent;
+use Clutch\Laravel\ValueObjects\RunBudget;
 
 beforeEach(function (): void {
-    $this->harness = Harness::fake([
-        'Research our three closest competitors' => HarnessResult::text('Their weakest flank is onboarding.'),
+    $this->clutch = Clutch::fake([
+        'Research our three closest competitors' => ClutchResult::text('Their weakest flank is onboarding.'),
     ]);
 
     $this->owner = $this->user();
 });
 
 it('creates a durable session that is ready to accept work', function (): void {
-    $session = Harness::agent(ResearchAgent::class)
+    $session = Clutch::agent(ResearchAgent::class)
         ->for($this->owner)
         ->name('Competitor research')
         ->create();
@@ -41,11 +41,11 @@ it('creates a durable session that is ready to accept work', function (): void {
 });
 
 it('runs a prompt synchronously and returns its terminal result', function (): void {
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
 
     $result = $session->prompt('Research our three closest competitors and recommend a wedge.');
 
-    expect($result)->toBeInstanceOf(HarnessResult::class)
+    expect($result)->toBeInstanceOf(ClutchResult::class)
         ->and($result->isCompleted())->toBeTrue()
         ->and($result->text)->toBe('Their weakest flank is onboarding.')
         ->and($result->run->status)->toBe(RunStatus::Completed)
@@ -57,7 +57,7 @@ it('runs a prompt synchronously and returns its terminal result', function (): v
 });
 
 it('records an ordered, gap-free event history for a run', function (): void {
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
 
     $result = $session->prompt('Research our three closest competitors.');
 
@@ -78,12 +78,12 @@ it('records an ordered, gap-free event history for a run', function (): void {
 });
 
 it('carries context across sequential runs in the same session', function (): void {
-    $this->harness->script([
-        HarnessResult::text('First answer.'),
-        HarnessResult::text('Second answer, building on the first.'),
+    $this->clutch->script([
+        ClutchResult::text('First answer.'),
+        ClutchResult::text('Second answer, building on the first.'),
     ]);
 
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
 
     $first = $session->prompt('Research our competitors.');
     $second = $session->prompt('Turn that into a one-page memo.');
@@ -100,10 +100,10 @@ it('carries context across sequential runs in the same session', function (): vo
 });
 
 it('refuses a second concurrent run in the same session', function (): void {
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
 
     // Occupy the slot without finishing it.
-    Harness::coordinator()->createRun($session, 'The first run.');
+    Clutch::coordinator()->createRun($session, 'The first run.');
 
     expect(fn () => $session->refresh()->prompt('The second run.'))
         ->toThrow(SessionBusy::class);
@@ -112,7 +112,7 @@ it('refuses a second concurrent run in the same session', function (): void {
 it('scopes sessions to their participant', function (): void {
     $stranger = $this->user('stranger@example.com');
 
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
 
     expect($session->authorizeFor($this->owner))->toBeInstanceOf(Session::class);
 
@@ -121,14 +121,14 @@ it('scopes sessions to their participant', function (): void {
 });
 
 it('applies the most restrictive budget across configuration and session', function (): void {
-    config()->set('agent-harness.budgets.max_steps', 50);
+    config()->set('clutch.budgets.max_steps', 50);
 
-    $session = Harness::agent(ResearchAgent::class)
+    $session = Clutch::agent(ResearchAgent::class)
         ->for($this->owner)
         ->budget(new RunBudget(maxSteps: 5, maxTokens: 1_000))
         ->create();
 
-    $budget = app(AgentHarness\Laravel\Budgets\BudgetManager::class)->effectiveBudget($session);
+    $budget = app(\Clutch\Laravel\Budgets\BudgetManager::class)->effectiveBudget($session);
 
     expect($budget->maxSteps)->toBe(5)
         ->and($budget->maxTokens)->toBe(1_000)
@@ -136,7 +136,7 @@ it('applies the most restrictive budget across configuration and session', funct
 });
 
 it('stores the permission mode chosen for the session', function (): void {
-    $session = Harness::agent(ResearchAgent::class)
+    $session = Clutch::agent(ResearchAgent::class)
         ->for($this->owner)
         ->permissions(PermissionMode::ApproveAll)
         ->create();
@@ -145,7 +145,7 @@ it('stores the permission mode chosen for the session', function (): void {
 });
 
 it('builds sessions immutably so a partial builder can be reused', function (): void {
-    $base = Harness::agent(ResearchAgent::class)->for($this->owner);
+    $base = Clutch::agent(ResearchAgent::class)->for($this->owner);
 
     $research = $base->name('Research')->create();
     $memo = $base->name('Memo')->create();
@@ -156,13 +156,13 @@ it('builds sessions immutably so a partial builder can be reused', function (): 
 });
 
 it('queues a run and reports its identifier immediately', function (): void {
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
 
     $run = $session->queue('Analyze every page on our website.');
 
     expect($run)->toBeInstanceOf(Run::class)
         ->and($run->id)->toStartWith('run_');
 
-    $this->harness->assertRunQueued('Analyze every page');
-    $this->harness->assertRunCompleted();
+    $this->clutch->assertRunQueued('Analyze every page');
+    $this->clutch->assertRunCompleted();
 });

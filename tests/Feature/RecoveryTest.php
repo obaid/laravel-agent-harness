@@ -2,21 +2,21 @@
 
 declare(strict_types=1);
 
-use AgentHarness\Laravel\Enums\FailureCategory;
-use AgentHarness\Laravel\Enums\RunStatus;
-use AgentHarness\Laravel\Exceptions\LeaseUnavailable;
-use AgentHarness\Laravel\Facades\Harness;
-use AgentHarness\Laravel\Jobs\ExecuteAgentRun;
-use AgentHarness\Laravel\Jobs\ReapAbandonedRuns;
-use AgentHarness\Laravel\Leases\LeaseManager;
-use AgentHarness\Laravel\Models\Run;
-use AgentHarness\Laravel\Runtime\HarnessResult;
-use AgentHarness\Laravel\Tests\Fixtures\Agents\ResearchAgent;
+use Clutch\Laravel\Enums\FailureCategory;
+use Clutch\Laravel\Enums\RunStatus;
+use Clutch\Laravel\Exceptions\LeaseUnavailable;
+use Clutch\Laravel\Facades\Clutch;
+use Clutch\Laravel\Jobs\ExecuteAgentRun;
+use Clutch\Laravel\Jobs\ReapAbandonedRuns;
+use Clutch\Laravel\Leases\LeaseManager;
+use Clutch\Laravel\Models\Run;
+use Clutch\Laravel\Runtime\ClutchResult;
+use Clutch\Laravel\Tests\Fixtures\Agents\ResearchAgent;
 
 beforeEach(function (): void {
     $this->owner = $this->user();
-    $this->harness = Harness::fake([HarnessResult::text('Done.')]);
-    $this->session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $this->clutch = Clutch::fake([ClutchResult::text('Done.')]);
+    $this->session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
 });
 
 it('lets only one worker hold a session lease at a time', function (): void {
@@ -34,7 +34,7 @@ it('lets only one worker hold a session lease at a time', function (): void {
 
 it('exits safely rather than executing while another worker holds the lease', function (): void {
     $leases = app(LeaseManager::class);
-    $run = Harness::coordinator()->createRun($this->session, 'Do it.');
+    $run = Clutch::coordinator()->createRun($this->session, 'Do it.');
 
     $held = $leases->acquire($this->session->id);
 
@@ -42,25 +42,25 @@ it('exits safely rather than executing while another worker holds the lease', fu
     $this->app->call([new ExecuteAgentRun($run->id, $run->version), 'handle']);
 
     expect($run->refresh()->status)->toBe(RunStatus::Created)
-        ->and($this->harness->driver()->prompts)->toBeEmpty();
+        ->and($this->clutch->driver()->prompts)->toBeEmpty();
 
     $held->release();
 });
 
 it('surfaces lease contention as a typed exception to direct callers', function (): void {
     $leases = app(LeaseManager::class);
-    $run = Harness::coordinator()->createRun($this->session, 'Do it.');
+    $run = Clutch::coordinator()->createRun($this->session, 'Do it.');
 
     $held = $leases->acquire($this->session->id);
 
-    expect(fn () => Harness::coordinator()->executeRun($run->id))
+    expect(fn () => Clutch::coordinator()->executeRun($run->id))
         ->toThrow(LeaseUnavailable::class);
 
     $held->release();
 });
 
 it('releases the lease even when a run fails', function (): void {
-    $this->harness->script([HarnessResult::failure('The provider exploded.')]);
+    $this->clutch->script([ClutchResult::failure('The provider exploded.')]);
 
     $leases = app(LeaseManager::class);
 
@@ -71,7 +71,7 @@ it('releases the lease even when a run fails', function (): void {
 });
 
 it('normalizes a driver failure into a safe terminal state', function (): void {
-    $this->harness->script([HarnessResult::failure('Provider said: sk-live-leak in body')]);
+    $this->clutch->script([ClutchResult::failure('Provider said: sk-live-leak in body')]);
 
     $result = $this->session->prompt('Do it.');
 
@@ -82,7 +82,7 @@ it('normalizes a driver failure into a safe terminal state', function (): void {
 });
 
 it('recovers a run whose worker disappeared', function (): void {
-    $run = Harness::coordinator()->createRun($this->session, 'Do it.');
+    $run = Clutch::coordinator()->createRun($this->session, 'Do it.');
 
     // Simulate a worker that died mid-run: still running, heartbeat long stale.
     $run->forceFill([
@@ -105,7 +105,7 @@ it('recovers a run whose worker disappeared', function (): void {
 });
 
 it('leaves a healthy run alone', function (): void {
-    $run = Harness::coordinator()->createRun($this->session, 'Do it.');
+    $run = Clutch::coordinator()->createRun($this->session, 'Do it.');
 
     $run->forceFill([
         'status' => RunStatus::Running,
@@ -120,7 +120,7 @@ it('leaves a healthy run alone', function (): void {
 
 it('does not reap a run whose worker still holds the lease', function (): void {
     $leases = app(LeaseManager::class);
-    $run = Harness::coordinator()->createRun($this->session, 'Do it.');
+    $run = Clutch::coordinator()->createRun($this->session, 'Do it.');
 
     $run->forceFill([
         'status' => RunStatus::Running,
@@ -139,7 +139,7 @@ it('does not reap a run whose worker still holds the lease', function (): void {
 });
 
 it('records a normalized failure when the job itself dies', function (): void {
-    $run = Harness::coordinator()->createRun($this->session, 'Do it.');
+    $run = Clutch::coordinator()->createRun($this->session, 'Do it.');
 
     (new ExecuteAgentRun($run->id, $run->version))->failed(new RuntimeException('OOM'));
 
@@ -154,11 +154,11 @@ it('records a normalized failure when the job itself dies', function (): void {
 });
 
 it('classifies a rate limit as retryable and a validation error as not', function (): void {
-    $rateLimited = AgentHarness\Laravel\ValueObjects\NormalizedFailure::fromThrowable(
+    $rateLimited = \Clutch\Laravel\ValueObjects\NormalizedFailure::fromThrowable(
         new RuntimeException('429 Too Many Requests'),
     );
 
-    $invalid = AgentHarness\Laravel\ValueObjects\NormalizedFailure::fromThrowable(
+    $invalid = \Clutch\Laravel\ValueObjects\NormalizedFailure::fromThrowable(
         new InvalidArgumentException('The prompt was empty.'),
     );
 
@@ -169,7 +169,7 @@ it('classifies a rate limit as retryable and a validation error as not', functio
 });
 
 it('keeps provider detail out of the message shown to a user', function (): void {
-    $failure = AgentHarness\Laravel\ValueObjects\NormalizedFailure::fromThrowable(
+    $failure = \Clutch\Laravel\ValueObjects\NormalizedFailure::fromThrowable(
         new RuntimeException('429 rate limit; key sk-live-abc123 quota exceeded'),
     );
 

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Exceptions;
+namespace Clutch\Laravel\Exceptions;
 
-final class ArtifactUnavailable extends HarnessException
+final class ArtifactUnavailable extends ClutchException
 {
     public function errorCode(): string
     {

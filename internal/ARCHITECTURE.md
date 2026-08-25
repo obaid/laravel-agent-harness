@@ -4,7 +4,7 @@ This document defines the internal architecture required to fulfill the public c
 
 ## 1. Goals
 
-Laravel Agent Harness must:
+Laravel Clutch must:
 
 1. Make Laravel AI agents durable across HTTP requests and completed turns.
 2. Provide a stable runtime contract independent of any one agent implementation.
@@ -81,7 +81,7 @@ Optional sandbox providers own:
 
 ## 4. Core components
 
-### `HarnessManager`
+### `ClutchManager`
 
 Public entry point used by the facade. Creates and loads sessions and runs, resolves authorization hooks, and delegates lifecycle work to the coordinator.
 
@@ -132,7 +132,7 @@ Combines harness permission mode, tool sensitivity, Laravel policies, tenant sco
 ### Harness driver
 
 ```php
-interface HarnessDriver
+interface ClutchDriver
 {
     public function name(): string;
 
@@ -164,7 +164,7 @@ interface HarnessDriver
 }
 ```
 
-Drivers may throw `HarnessCapabilityUnsupported` for optional methods, but only after capability declaration has prevented ordinary callers from reaching that path. A mismatch between declared and actual capability is a driver bug.
+Drivers may throw `CapabilityUnsupported` for optional methods, but only after capability declaration has prevented ordinary callers from reaching that path. A mismatch between declared and actual capability is a driver bug.
 
 A driver returns exactly one outcome from a turn: `completed`, `awaiting_approval`,
 `cancelled`, `failed`, or `budget_exceeded`. The last exists so a driver that
@@ -524,11 +524,11 @@ Primary jobs:
 - `CancelAgentRun`
 - `StopAgentSession`
 - `DestroyAgentSession`
-- `PruneAgentHarnessRecords`
+- `PruneClutchRecords`
 
 Every execution job contains only identifiers and an expected state/version. It reloads all mutable data.
 
-The lease key is `agent-harness:session:{session-id}`. The worker renews it on a heartbeat. The database `version` and `active_run_id` fields remain the final correctness checks if Redis is unavailable or a lease expires incorrectly.
+The lease key is `clutch:session:{session-id}`. The worker renews it on a heartbeat. The database `version` and `active_run_id` fields remain the final correctness checks if Redis is unavailable or a lease expires incorrectly.
 
 Leases require a cache store implementing `LockProvider`. A store without atomic
 locks is refused with `LeaseUnavailable` rather than falling back to a
@@ -663,13 +663,13 @@ Pruning runs in bounded batches and is safe to restart.
 
 Potential extension packages:
 
-- `agent-harness/sandbox-e2b`
-- `agent-harness/sandbox-modal`
-- `agent-harness/driver-codex`
-- `agent-harness/driver-claude-code`
-- `agent-harness/driver-opencode`
-- `agent-harness/ui-react`
-- `agent-harness/ui-livewire`
+- `clutch/sandbox-e2b`
+- `clutch/sandbox-modal`
+- `clutch/driver-codex`
+- `clutch/driver-claude-code`
+- `clutch/driver-opencode`
+- `clutch/ui-react`
+- `clutch/ui-livewire`
 
 The core must not depend on any extension package.
 
@@ -698,29 +698,29 @@ an internal detail rather than an extension point.
 
 | Component | Class |
 | --- | --- |
-| `HarnessManager` | `AgentHarness\Laravel\HarnessManager` |
-| `RunCoordinator` | `AgentHarness\Laravel\Runtime\RunCoordinator` |
-| `DriverRegistry` | `AgentHarness\Laravel\Runtime\DriverRegistry` |
-| `EventStore` | `AgentHarness\Laravel\Runtime\EventStore` |
-| `ApprovalBroker` | `AgentHarness\Laravel\Approvals\ApprovalBroker` |
-| `CheckpointStore` | `AgentHarness\Laravel\Checkpoints\CheckpointStore` |
-| `LeaseManager` | `AgentHarness\Laravel\Leases\LeaseManager` |
-| `BudgetManager` | `AgentHarness\Laravel\Budgets\BudgetManager` |
-| `ArtifactManager` | `AgentHarness\Laravel\Artifacts\ArtifactManager` |
-| `ToolExecutionLedger` | `AgentHarness\Laravel\Tools\ToolExecutionLedger` |
-| `PolicyEngine` | `AgentHarness\Laravel\Policies\PolicyEngine` |
+| `ClutchManager` | `Clutch\Laravel\ClutchManager` |
+| `RunCoordinator` | `Clutch\Laravel\Runtime\RunCoordinator` |
+| `DriverRegistry` | `Clutch\Laravel\Runtime\DriverRegistry` |
+| `EventStore` | `Clutch\Laravel\Runtime\EventStore` |
+| `ApprovalBroker` | `Clutch\Laravel\Approvals\ApprovalBroker` |
+| `CheckpointStore` | `Clutch\Laravel\Checkpoints\CheckpointStore` |
+| `LeaseManager` | `Clutch\Laravel\Leases\LeaseManager` |
+| `BudgetManager` | `Clutch\Laravel\Budgets\BudgetManager` |
+| `ArtifactManager` | `Clutch\Laravel\Artifacts\ArtifactManager` |
+| `ToolExecutionLedger` | `Clutch\Laravel\Tools\ToolExecutionLedger` |
+| `PolicyEngine` | `Clutch\Laravel\Policies\PolicyEngine` |
 
 Domain models map to tables as follows.
 
 | Model | Table |
 | --- | --- |
-| `Models\Session` | `agent_harness_sessions` |
-| `Models\Run` | `agent_harness_runs` |
-| `Models\RunEvent` | `agent_harness_events` |
-| `Models\Approval` | `agent_harness_approvals` |
-| `Models\Checkpoint` | `agent_harness_checkpoints` |
-| `Models\Artifact` | `agent_harness_artifacts` |
-| `Models\ToolExecution` | `agent_harness_tool_executions` |
+| `Models\Session` | `clutch_sessions` |
+| `Models\Run` | `clutch_runs` |
+| `Models\RunEvent` | `clutch_events` |
+| `Models\Approval` | `clutch_approvals` |
+| `Models\Checkpoint` | `clutch_checkpoints` |
+| `Models\Artifact` | `clutch_artifacts` |
+| `Models\ToolExecution` | `clutch_tool_executions` |
 
 Two additions beyond section 4, both supporting behavior the contract already
 required:

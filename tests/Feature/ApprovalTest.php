@@ -2,31 +2,31 @@
 
 declare(strict_types=1);
 
-use AgentHarness\Laravel\Approvals\ApprovalBroker;
-use AgentHarness\Laravel\Enums\ApprovalStatus;
-use AgentHarness\Laravel\Enums\RunStatus;
-use AgentHarness\Laravel\Enums\SessionStatus;
-use AgentHarness\Laravel\Events\ApprovalRequested;
-use AgentHarness\Laravel\Exceptions\ApprovalAlreadyResolved;
-use AgentHarness\Laravel\Facades\Harness;
-use AgentHarness\Laravel\Models\Approval;
-use AgentHarness\Laravel\Runtime\HarnessResult;
-use AgentHarness\Laravel\Tests\Fixtures\Agents\PublishingAgent;
+use Clutch\Laravel\Approvals\ApprovalBroker;
+use Clutch\Laravel\Enums\ApprovalStatus;
+use Clutch\Laravel\Enums\RunStatus;
+use Clutch\Laravel\Enums\SessionStatus;
+use Clutch\Laravel\Events\ApprovalRequested;
+use Clutch\Laravel\Exceptions\ApprovalAlreadyResolved;
+use Clutch\Laravel\Facades\Clutch;
+use Clutch\Laravel\Models\Approval;
+use Clutch\Laravel\Runtime\ClutchResult;
+use Clutch\Laravel\Tests\Fixtures\Agents\PublishingAgent;
 use Illuminate\Support\Facades\Event;
 
 beforeEach(function (): void {
     $this->owner = $this->user();
 
-    $this->harness = Harness::fake([
-        HarnessResult::awaitingApproval(
+    $this->clutch = Clutch::fake([
+        ClutchResult::awaitingApproval(
             tool: 'publish_article',
             arguments: ['article_id' => 123],
             reason: 'Publishing is irreversible.',
         ),
-        HarnessResult::text('The article is published.'),
+        ClutchResult::text('The article is published.'),
     ]);
 
-    $this->session = Harness::agent(PublishingAgent::class)->for($this->owner)->create();
+    $this->session = Clutch::agent(PublishingAgent::class)->for($this->owner)->create();
 });
 
 it('pauses the run and records a durable approval', function (): void {
@@ -46,7 +46,7 @@ it('pauses the run and records a durable approval', function (): void {
     expect($this->session->refresh()->status)->toBe(SessionStatus::AwaitingApproval)
         ->and($this->session->active_run_id)->toBe($result->run->id);
 
-    $this->harness->assertApprovalRequested('publish_article');
+    $this->clutch->assertApprovalRequested('publish_article');
 });
 
 it('checkpoints before pausing so another process can resume', function (): void {
@@ -75,17 +75,17 @@ it('resumes the run when the approval is granted in another request', function (
     $approval = Approval::query()->firstOrFail();
 
     // A second request, with no memory of the first, resolves the decision.
-    $run = Harness::run($paused->run->id)->authorizeFor($this->owner);
+    $run = Clutch::run($paused->run->id)->authorizeFor($this->owner);
 
     $run->approve($approval->id, reason: 'Reviewed and cleared for publication.', actor: $this->owner);
 
-    app(AgentHarness\Laravel\Runtime\RunCoordinator::class)->resumeAfterApproval($run->refresh());
+    app(\Clutch\Laravel\Runtime\RunCoordinator::class)->resumeAfterApproval($run->refresh());
 
     expect($run->refresh()->status)->toBe(RunStatus::Completed)
         ->and($run->output_text)->toBe('The article is published.');
 
-    $this->harness->assertApproved('publish_article');
-    $this->harness->assertNothingAwaitingApproval();
+    $this->clutch->assertApproved('publish_article');
+    $this->clutch->assertNothingAwaitingApproval();
 });
 
 it('resolves a decision exactly once', function (): void {
@@ -130,7 +130,7 @@ it('records who decided and why', function (): void {
         ->and($approval->resolved_by_type)->toBe($this->owner->getMorphClass())
         ->and($approval->resolved_at)->not->toBeNull();
 
-    $this->harness->assertRejected('publish_article');
+    $this->clutch->assertRejected('publish_article');
 });
 
 it('carries a rejection back to the agent so it can react', function (): void {
@@ -139,7 +139,7 @@ it('carries a rejection back to the agent so it can react', function (): void {
 
     $paused->run->reject($approval->id, 'Do not publish this draft.', $this->owner);
 
-    app(AgentHarness\Laravel\Runtime\RunCoordinator::class)->resumeAfterApproval($paused->run->refresh());
+    app(\Clutch\Laravel\Runtime\RunCoordinator::class)->resumeAfterApproval($paused->run->refresh());
 
     $run = $paused->run->refresh();
 
@@ -153,15 +153,15 @@ it('carries a rejection back to the agent so it can react', function (): void {
 });
 
 it('does not resume until every pending decision is in', function (): void {
-    $this->harness->script([
-        new AgentHarness\Laravel\Testing\ScriptedResponse(
-            AgentHarness\Laravel\Testing\ScriptedResponse::APPROVAL,
+    $this->clutch->script([
+        new \Clutch\Laravel\Testing\ScriptedResponse(
+            \Clutch\Laravel\Testing\ScriptedResponse::APPROVAL,
             pendingApprovals: [
-                new AgentHarness\Laravel\Data\PendingApproval('call_a', 'publish_article', ['id' => 1]),
-                new AgentHarness\Laravel\Data\PendingApproval('call_b', 'send_email', ['to' => 'a@b.com']),
+                new \Clutch\Laravel\Data\PendingApproval('call_a', 'publish_article', ['id' => 1]),
+                new \Clutch\Laravel\Data\PendingApproval('call_b', 'send_email', ['to' => 'a@b.com']),
             ],
         ),
-        HarnessResult::text('Both done.'),
+        ClutchResult::text('Both done.'),
     ]);
 
     $paused = $this->session->prompt('Publish and announce the article.');
@@ -189,10 +189,10 @@ it('keeps one approval row per tool call even if the pause is recorded twice', f
 
     // Simulate a duplicated worker delivery re-recording the same pause.
     $broker->request($paused->run, [
-        new AgentHarness\Laravel\Data\PendingApproval('call_dup', 'publish_article', ['article_id' => 123]),
+        new \Clutch\Laravel\Data\PendingApproval('call_dup', 'publish_article', ['article_id' => 123]),
     ]);
     $broker->request($paused->run, [
-        new AgentHarness\Laravel\Data\PendingApproval('call_dup', 'publish_article', ['article_id' => 123]),
+        new \Clutch\Laravel\Data\PendingApproval('call_dup', 'publish_article', ['article_id' => 123]),
     ]);
 
     expect(Approval::query()->where('tool_call_id', 'call_dup')->count())->toBe(1);

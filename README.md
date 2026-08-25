@@ -1,13 +1,13 @@
-# Laravel Agent Harness
+# Laravel Clutch
 
 Durable, observable agent runtimes for Laravel, built on the official [Laravel AI SDK](https://laravel.com/docs/ai).
 
-[Documentation](https://obaid.github.io/laravel-agent-harness/) · [Recipes](https://obaid.github.io/laravel-agent-harness/recipes/)
+[Documentation](https://obaid.github.io/laravel-clutch/) · [Recipes](https://obaid.github.io/laravel-clutch/recipes/)
 
 Laravel AI gives you the agent. This package gives you everything around it: sessions that outlive a request, runs you can queue and resume, an ordered event history you can replay, human approvals that survive a deploy, budgets, cancellation, and artifacts.
 
 ```php
-$session = Harness::agent(ResearchAgent::class)->for($user)->create();
+$session = Clutch::agent(ResearchAgent::class)->for($user)->create();
 
 $result = $session->prompt('Research our competitors and recommend a wedge.');
 ```
@@ -132,10 +132,10 @@ If the agent hits a tool that needs approval, the middle of that sequence ends a
 ## Installation
 
 ```bash
-composer require obaid/laravel-agent-harness
+composer require obaid/laravel-clutch
 
 # The harness tables.
-php artisan vendor:publish --provider="AgentHarness\Laravel\AgentHarnessServiceProvider"
+php artisan vendor:publish --provider="Clutch\Laravel\ClutchServiceProvider"
 
 # Laravel AI's conversation tables, if you have not published them already.
 # Session context lives there, so this step is not optional.
@@ -149,8 +149,8 @@ Configure at least one Laravel AI provider the usual way.
 Give agents a queue of their own while you are here. A run that takes four minutes should not sit in front of your password reset emails.
 
 ```env
-AGENT_HARNESS_QUEUE_CONNECTION=redis
-AGENT_HARNESS_QUEUE=agents
+CLUTCH_QUEUE_CONNECTION=redis
+CLUTCH_QUEUE=agents
 ```
 
 ```bash
@@ -176,7 +176,7 @@ A session holds many runs, one after another, and only one of them can be active
 ### Write an agent
 
 ```bash
-php artisan make:harness-agent ResearchAgent
+php artisan make:clutch-agent ResearchAgent
 ```
 
 You get an ordinary Laravel AI agent with one extra thing wired in:
@@ -184,7 +184,7 @@ You get an ordinary Laravel AI agent with one extra thing wired in:
 ```php
 namespace App\Ai\Agents;
 
-use AgentHarness\Laravel\Facades\Harness;
+use Clutch\Laravel\Facades\Clutch;
 use Laravel\Ai\Concerns\RemembersConversations;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\HasTools;
@@ -207,7 +207,7 @@ class ResearchAgent implements Agent, HasTools, RemembersConversationsContract
 
     public function tools(): iterable
     {
-        return Harness::policy([new SearchWeb, new FetchPage]);
+        return Clutch::policy([new SearchWeb, new FetchPage]);
     }
 }
 ```
@@ -217,10 +217,10 @@ The `RemembersConversations` trait is doing real work here. Laravel AI only pers
 ### Create a session and prompt it
 
 ```php
-use AgentHarness\Laravel\Facades\Harness;
+use Clutch\Laravel\Facades\Clutch;
 use App\Ai\Agents\ResearchAgent;
 
-$session = Harness::agent(ResearchAgent::class)
+$session = Clutch::agent(ResearchAgent::class)
     ->for($request->user())
     ->name('Competitor research')
     ->create();
@@ -243,7 +243,7 @@ The session, run, events, tool activity, approvals, artifacts, usage, and termin
 ### Continue it later
 
 ```php
-$session = Harness::session($sessionId)->authorizeFor($request->user());
+$session = Clutch::session($sessionId)->authorizeFor($request->user());
 
 $result = $session->prompt('Turn the recommendation into a one-page strategy memo.');
 ```
@@ -264,10 +264,10 @@ return response()->accepted([
 ]);
 ```
 
-Queue behavior is configurable globally in `config/agent-harness.php`, or per session:
+Queue behavior is configurable globally in `config/clutch.php`, or per session:
 
 ```php
-$session = Harness::agent(ResearchAgent::class)
+$session = Clutch::agent(ResearchAgent::class)
     ->for($user)
     ->onConnection('redis')
     ->onQueue('agents')
@@ -281,7 +281,7 @@ Stream a run straight from a controller:
 
 ```php
 Route::post('/research', function (Request $request) {
-    $session = Harness::session($request->session_id)->authorizeFor($request->user());
+    $session = Clutch::session($request->session_id)->authorizeFor($request->user());
 
     return $session
         ->stream('Create the report and explain your progress.')
@@ -294,7 +294,7 @@ That plugs directly into the Vercel AI SDK's `useChat`. Drop `usingVercelDataPro
 Queued runs are consumed through the event stream:
 
 ```http
-GET /api/agent-harness/runs/{run}/events?after=42
+GET /api/clutch/runs/{run}/events?after=42
 Accept: text/event-stream
 ```
 
@@ -323,7 +323,7 @@ class PublishArticle implements Tool, Approvable
 When the agent reaches that tool the run pauses, a checkpoint is written, and the worker exits normally. Nothing sits open holding a connection. Hours later, in a different process:
 
 ```php
-$run = Harness::run($runId)->authorizeFor($user);
+$run = Clutch::run($runId)->authorizeFor($user);
 
 $run->approve(
     approvalId: $approvalId,
@@ -347,9 +347,9 @@ Decisions are idempotent. Repeating one returns the existing result. Trying to r
 Endpoints for all of this ship with the package:
 
 ```http
-GET  /api/agent-harness/runs/{run}/approvals
-POST /api/agent-harness/runs/{run}/approvals/{approval}/approve
-POST /api/agent-harness/runs/{run}/approvals/{approval}/reject
+GET  /api/clutch/runs/{run}/approvals
+POST /api/clutch/runs/{run}/approvals/{approval}/approve
+POST /api/clutch/runs/{run}/approvals/{approval}/reject
 ```
 
 Notifications are yours to wire up:
@@ -365,9 +365,9 @@ Event::listen(ApprovalRequested::class, function (ApprovalRequested $event) {
 ### Permission modes
 
 ```php
-use AgentHarness\Laravel\Enums\PermissionMode;
+use Clutch\Laravel\Enums\PermissionMode;
 
-$session = Harness::agent(PublishingAgent::class)
+$session = Clutch::agent(PublishingAgent::class)
     ->for($user)
     ->permissions(PermissionMode::ApproveSensitive)
     ->create();
@@ -406,12 +406,12 @@ class PublishArticle implements Tool, SensitiveTool
 
 A tool you have not classified counts as sensitive.
 
-For the mode to apply, pass your tool list through `Harness::policy()`:
+For the mode to apply, pass your tool list through `Clutch::policy()`:
 
 ```php
 public function tools(): iterable
 {
-    return Harness::policy([
+    return Clutch::policy([
         new SearchWeb,
         new DraftEmail,
         new PublishArticle,
@@ -419,9 +419,9 @@ public function tools(): iterable
 }
 ```
 
-Laravel AI asks the agent for its tools on every turn and that list is usually rebuilt each time, so the harness cannot rewrite it afterward. The agent hands it over instead. `make:harness-agent` writes this for you.
+Laravel AI asks the agent for its tools on every turn and that list is usually rebuilt each time, so the harness cannot rewrite it afterward. The agent hands it over instead. `make:clutch-agent` writes this for you.
 
-With that in place, a tool the mode denies is withheld from the agent completely. The model is never told it exists, since refusing after the fact would still have exposed the capability. A tool that needs sign off is marked approvable, which is what pauses the run and creates the durable approval. Outside a harness run `Harness::policy()` does nothing at all, so the same agent still behaves normally when you prompt it directly through Laravel AI.
+With that in place, a tool the mode denies is withheld from the agent completely. The model is never told it exists, since refusing after the fact would still have exposed the capability. A tool that needs sign off is marked approvable, which is what pauses the run and creates the durable approval. Outside a harness run `Clutch::policy()` does nothing at all, so the same agent still behaves normally when you prompt it directly through Laravel AI.
 
 A tool that asks for approval on its own, through Laravel AI's `requireApproval()`, is making its author's call rather than the harness's. `AllowAll` relaxes harness policy and leaves that alone.
 
@@ -440,9 +440,9 @@ app(PolicyEngine::class)->extend(function (ToolInvocation $invocation, ToolSensi
 Constrain a session or a single run:
 
 ```php
-use AgentHarness\Laravel\ValueObjects\RunBudget;
+use Clutch\Laravel\ValueObjects\RunBudget;
 
-$session = Harness::agent(ResearchAgent::class)
+$session = Clutch::agent(ResearchAgent::class)
     ->for($user)
     ->budget(new RunBudget(
         maxSteps: 40,
@@ -467,7 +467,7 @@ $run->retry(resetBudget: true);
 `maxCostUsd` needs prices to work against:
 
 ```php
-// config/agent-harness.php
+// config/clutch.php
 'pricing' => [
     'anthropic:claude-sonnet-4-5' => ['input' => 3.00, 'output' => 15.00],
     'openai:gpt-5' => ['input' => 1.25, 'output' => 10.00],
@@ -479,7 +479,7 @@ An unpriced model contributes `0.00` rather than a guess. That shows up in the u
 ## Cancellation
 
 ```php
-$run = Harness::run($runId)->authorizeFor($user);
+$run = Clutch::run($runId)->authorizeFor($user);
 
 $run->cancel(reason: 'The request is no longer needed.');
 ```
@@ -506,8 +506,8 @@ public function handle(Request $request): string
 Agents and tools attach durable outputs to a run:
 
 ```php
-use AgentHarness\Laravel\Artifacts\Artifact;
-use AgentHarness\Laravel\Runtime\RunContext;
+use Clutch\Laravel\Artifacts\Artifact;
+use Clutch\Laravel\Runtime\RunContext;
 
 $artifact = Artifact::fromStorage(disk: 's3', path: 'reports/content-gap-2026-08-24.pdf')
     ->name('Content gap report')
@@ -527,7 +527,7 @@ Read them back from a result or a run:
 
 ```php
 $artifacts = $result->artifacts;
-$artifacts = Harness::run($runId)->artifacts;
+$artifacts = Clutch::run($runId)->artifacts;
 ```
 
 Contents stay on the filesystem disk you configured. The database holds metadata, ownership, a SHA-256 for integrity, and a storage reference. The bytes never land in an event payload.
@@ -537,8 +537,8 @@ Contents stay on the filesystem disk you configured. The database holds metadata
 Any tool with an external side effect should implement `IdempotentTool`:
 
 ```php
-use AgentHarness\Laravel\Contracts\IdempotentTool;
-use AgentHarness\Laravel\Data\ToolInvocation;
+use Clutch\Laravel\Contracts\IdempotentTool;
+use Clutch\Laravel\Data\ToolInvocation;
 use Laravel\Ai\Contracts\Tool;
 
 final class PublishArticle implements Tool, IdempotentTool
@@ -585,9 +585,9 @@ The core types:
 Listen through Laravel events, with no dependency on the transport:
 
 ```php
-use AgentHarness\Laravel\Events\HarnessEventRecorded;
+use Clutch\Laravel\Events\ClutchEventRecorded;
 
-Event::listen(HarnessEventRecorded::class, function (HarnessEventRecorded $event) {
+Event::listen(ClutchEventRecorded::class, function (ClutchEventRecorded $event) {
     // Audit, analytics, metering, notifications, or your own broadcasting.
 });
 ```
@@ -640,26 +640,26 @@ The validated value is stored on the terminal run record and emitted with `run.c
 The default `laravel-ai` driver runs ordinary Laravel AI agents inside your own workers:
 
 ```php
-$session = Harness::agent(ResearchAgent::class)->driver('laravel-ai')->create();
+$session = Clutch::agent(ResearchAgent::class)->driver('laravel-ai')->create();
 ```
 
 Drivers put different runtimes behind one set of session, run, event, approval, checkpoint, and artifact contracts.
 
 ```php
 // A future coding-agent driver.
-$session = Harness::runtime('codex')
+$session = Clutch::runtime('codex')
     ->for($user)
     ->workspace($repository)
     ->sandbox('e2b')
     ->create();
 ```
 
-Every driver declares what it can do, and the harness checks before it acts. Asking for something a driver does not support fails with `HarnessCapabilityUnsupported` before any work begins, so a safety or durability feature never quietly degrades into something weaker.
+Every driver declares what it can do, and the harness checks before it acts. Asking for something a driver does not support fails with `CapabilityUnsupported` before any work begins, so a safety or durability feature never quietly degrades into something weaker.
 
 Writing a driver? There is a shared contract suite you can point at it:
 
 ```php
-use AgentHarness\Laravel\Testing\DriverContractTests;
+use Clutch\Laravel\Testing\DriverContractTests;
 
 it('passes the harness driver contract', function () {
     $result = DriverContractTests::for(new MyDriver)->run();
@@ -681,16 +681,16 @@ Secrets are resolved at runtime, scoped to the session, and never written into e
 ## Inspecting runs
 
 ```bash
-php artisan harness:sessions              # list sessions
-php artisan harness:run {run-id}          # inspect one run
-php artisan harness:events {run-id}       # replay its event history
-php artisan harness:retry {run-id}        # queue a fresh attempt
-php artisan harness:cancel {run-id}       # request cooperative cancellation
-php artisan harness:reap                  # recover runs whose worker vanished
-php artisan harness:prune                 # apply retention windows
+php artisan clutch:sessions              # list sessions
+php artisan clutch:run {run-id}          # inspect one run
+php artisan clutch:events {run-id}       # replay its event history
+php artisan clutch:retry {run-id}        # queue a fresh attempt
+php artisan clutch:cancel {run-id}       # request cooperative cancellation
+php artisan clutch:reap                  # recover runs whose worker vanished
+php artisan clutch:prune                 # apply retention windows
 ```
 
-`harness:events` prints a readable timeline:
+`clutch:events` prints a readable timeline:
 
 ```
    1 21:15:09.204 run.created      Research our three closest competitors
@@ -710,28 +710,28 @@ Sensitive fields are already gone, because they never reached storage.
 Fake the harness. No provider, no queue worker, no network, but the real coordinator, event store, approvals, and artifacts:
 
 ```php
-use AgentHarness\Laravel\Facades\Harness;
-use AgentHarness\Laravel\Runtime\HarnessResult;
+use Clutch\Laravel\Facades\Clutch;
+use Clutch\Laravel\Runtime\ClutchResult;
 
-Harness::fake([
-    'Draft a brief' => HarnessResult::text('The proposed brief...'),
+Clutch::fake([
+    'Draft a brief' => ClutchResult::text('The proposed brief...'),
 ]);
 
-$session = Harness::agent(ResearchAgent::class)->for($user)->create();
+$session = Clutch::agent(ResearchAgent::class)->for($user)->create();
 
 $session->queue('Draft a brief');
 
-Harness::assertSessionCreated(ResearchAgent::class);
-Harness::assertRunQueued('Draft a brief');
-Harness::assertRunCompleted();
-Harness::assertNothingAwaitingApproval();
+Clutch::assertSessionCreated(ResearchAgent::class);
+Clutch::assertRunQueued('Draft a brief');
+Clutch::assertRunCompleted();
+Clutch::assertNothingAwaitingApproval();
 ```
 
 Test a paused run:
 
 ```php
-Harness::fake([
-    HarnessResult::awaitingApproval(
+Clutch::fake([
+    ClutchResult::awaitingApproval(
         tool: 'publish_article',
         arguments: ['article_id' => 123],
     ),
@@ -739,19 +739,19 @@ Harness::fake([
 
 $run = $session->queue('Publish the approved article.');
 
-Harness::assertApprovalRequested('publish_article');
+Clutch::assertApprovalRequested('publish_article');
 ```
 
 Script richer ones:
 
 ```php
-Harness::fake([
-    HarnessResult::text('Report ready.')
+Clutch::fake([
+    ClutchResult::text('Report ready.')
         ->withToolCall('search_web', ['q' => 'pricing'], '12 results')
         ->withArtifact(Artifact::fromContents($pdf, 'report.pdf')->name('Report')),
 
-    HarnessResult::structured(['score' => 87]),
-    HarnessResult::failure('The provider is down.'),
+    ClutchResult::structured(['score' => 87]),
+    ClutchResult::failure('The provider is down.'),
 ]);
 ```
 
@@ -766,15 +766,15 @@ Runs recorded: awaiting_approval ("Draft a brief")
 
 ## Configuration
 
-The published `config/agent-harness.php` is commented throughout. The keys you will touch first:
+The published `config/clutch.php` is commented throughout. The keys you will touch first:
 
 ```php
 return [
-    'default_driver' => env('AGENT_HARNESS_DRIVER', 'laravel-ai'),
+    'default_driver' => env('CLUTCH_DRIVER', 'laravel-ai'),
 
     'queue' => [
-        'connection' => env('AGENT_HARNESS_QUEUE_CONNECTION'),
-        'queue' => env('AGENT_HARNESS_QUEUE', 'agents'),
+        'connection' => env('CLUTCH_QUEUE_CONNECTION'),
+        'queue' => env('CLUTCH_QUEUE', 'agents'),
         'timeout' => 900,
     ],
 
@@ -810,7 +810,7 @@ return [
 
     'routes' => [
         'enabled' => true,
-        'prefix' => 'api/agent-harness',
+        'prefix' => 'api/clutch',
         'middleware' => ['api', 'auth'],
     ],
 ];
@@ -841,7 +841,7 @@ It also will not claim to interrupt a tool that cannot be interrupted, and it ca
 
 ## Documentation
 
-Full docs at [obaid.github.io/laravel-agent-harness](https://obaid.github.io/laravel-agent-harness/), including [recipes](https://obaid.github.io/laravel-agent-harness/recipes/) for approval inboxes, live progress UIs, multi tenant scoping, and spend caps.
+Full docs at [obaid.github.io/laravel-clutch](https://obaid.github.io/laravel-clutch/), including [recipes](https://obaid.github.io/laravel-clutch/recipes/) for approval inboxes, live progress UIs, multi tenant scoping, and spend caps.
 
 ## License
 

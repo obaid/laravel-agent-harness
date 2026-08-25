@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-use AgentHarness\Laravel\Enums\RunStatus;
-use AgentHarness\Laravel\Exceptions\DriverFailure;
-use AgentHarness\Laravel\Facades\Harness;
-use AgentHarness\Laravel\Models\Approval;
-use AgentHarness\Laravel\Tests\Fixtures\Agents\ResearchAgent;
-use AgentHarness\Laravel\Tests\Fixtures\Agents\StatelessAgent;
+use Clutch\Laravel\Enums\RunStatus;
+use Clutch\Laravel\Exceptions\DriverFailure;
+use Clutch\Laravel\Facades\Clutch;
+use Clutch\Laravel\Models\Approval;
+use Clutch\Laravel\Tests\Fixtures\Agents\ResearchAgent;
+use Clutch\Laravel\Tests\Fixtures\Agents\StatelessAgent;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
 use Laravel\Ai\Approvals\PendingApproval;
@@ -17,7 +17,7 @@ use Laravel\Ai\Responses\AgentResponse;
 
 beforeEach(function (): void {
     // The real driver, against Laravel AI's own fake gateway.
-    config()->set('agent-harness.default_driver', 'laravel-ai');
+    config()->set('clutch.default_driver', 'laravel-ai');
 
     $this->owner = $this->user();
 });
@@ -25,7 +25,7 @@ beforeEach(function (): void {
 it('runs a real Laravel AI agent through the harness', function (): void {
     ResearchAgent::fake(['Their weakest flank is onboarding.']);
 
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
 
     $result = $session->prompt('Research our three closest competitors.');
 
@@ -37,7 +37,7 @@ it('runs a real Laravel AI agent through the harness', function (): void {
 it('persists a Laravel AI conversation and reuses it on the next turn', function (): void {
     ResearchAgent::fake(['First answer.', 'Second answer.']);
 
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
 
     $session->prompt('Research our competitors.');
 
@@ -56,7 +56,7 @@ it('persists a Laravel AI conversation and reuses it on the next turn', function
 it('attributes the conversation to the session participant', function (): void {
     ResearchAgent::fake(['Answer.']);
 
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
     $session->prompt('Research.');
 
     $conversation = Conversation::query()->firstOrFail();
@@ -68,7 +68,7 @@ it('attributes the conversation to the session participant', function (): void {
 it('translates Laravel AI stream events into harness events', function (): void {
     ResearchAgent::fake(['A short answer.']);
 
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
     $run = $session->prompt('Research.')->run;
 
     $types = $run->events()->pluck('type')->map->value;
@@ -91,7 +91,7 @@ it('captures usage reported by the provider', function (): void {
         ),
     ]);
 
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
     $usage = $session->prompt('Research.')->usage;
 
     expect($usage->promptTokens)->toBe(120)
@@ -105,7 +105,7 @@ it('estimates cost from the configured pricing table', function (): void {
     // test asserts the estimator's behavior rather than a hard-coded model name.
     $provider = Laravel\Ai\Ai::textProviderFor(new ResearchAgent, config('ai.default'));
 
-    config()->set('agent-harness.pricing', [
+    config()->set('clutch.pricing', [
         $provider->name().':'.$provider->defaultTextModel() => ['input' => 3.00, 'output' => 15.00],
     ]);
 
@@ -117,7 +117,7 @@ it('estimates cost from the configured pricing table', function (): void {
         ),
     ]);
 
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
     $result = $session->prompt('Research.');
 
     expect((float) $result->run->cost_usd)->toBe(3.0)
@@ -125,7 +125,7 @@ it('estimates cost from the configured pricing table', function (): void {
 });
 
 it('leaves cost at zero for a model with no configured price', function (): void {
-    config()->set('agent-harness.pricing', []);
+    config()->set('clutch.pricing', []);
 
     ResearchAgent::fake([
         new Laravel\Ai\Responses\TextResponse(
@@ -135,7 +135,7 @@ it('leaves cost at zero for a model with no configured price', function (): void
         ),
     ]);
 
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
 
     // An unpriced model contributes nothing rather than a guessed figure.
     expect((float) $session->prompt('Research.')->run->cost_usd)->toBe(0.0);
@@ -148,7 +148,7 @@ it('surfaces a Laravel AI approval pause as a durable harness approval', functio
         ]),
     ]);
 
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
     $result = $session->prompt('Publish it.');
 
     expect($result->isAwaitingApproval())->toBeTrue();
@@ -162,13 +162,13 @@ it('surfaces a Laravel AI approval pause as a durable harness approval', functio
 });
 
 it('refuses an agent that cannot persist its conversation', function (): void {
-    expect(fn () => Harness::agent(StatelessAgent::class)->for($this->owner)->create())
+    expect(fn () => Clutch::agent(StatelessAgent::class)->for($this->owner)->create())
         ->toThrow(DriverFailure::class, 'RemembersConversations');
 });
 
 it('names the exact fix when an agent cannot persist its conversation', function (): void {
     try {
-        Harness::agent(StatelessAgent::class)->for($this->owner)->create();
+        Clutch::agent(StatelessAgent::class)->for($this->owner)->create();
     } catch (DriverFailure $e) {
         expect($e->getMessage())
             ->toContain('use Laravel\Ai\Concerns\RemembersConversations;')
@@ -183,7 +183,7 @@ it('names the exact fix when an agent cannot persist its conversation', function
 it('allows a deliberately single-turn agent to opt out', function (): void {
     StatelessAgent::fake(['One-shot answer.']);
 
-    $session = Harness::agent(StatelessAgent::class)
+    $session = Clutch::agent(StatelessAgent::class)
         ->for($this->owner)
         ->configure('stateless', true)
         ->create();
@@ -195,7 +195,7 @@ it('allows a deliberately single-turn agent to opt out', function (): void {
 });
 
 it('declares its continuation guarantees truthfully', function (): void {
-    $driver = Harness::drivers()->driver('laravel-ai');
+    $driver = Clutch::drivers()->driver('laravel-ai');
 
     $capabilities = $driver->capabilities();
 
@@ -211,7 +211,7 @@ it('declares its continuation guarantees truthfully', function (): void {
 it('keeps only the conversation reference in its checkpoint', function (): void {
     ResearchAgent::fake(['Answer.']);
 
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
     $session->prompt('Research.');
 
     $checkpoint = $session->checkpoints()->latest('created_at')->firstOrFail();
@@ -225,7 +225,7 @@ it('keeps only the conversation reference in its checkpoint', function (): void 
 it('explains how to install the Laravel AI migrations when they are missing', function (): void {
     ResearchAgent::fake(['Answer.']);
 
-    $session = Harness::agent(ResearchAgent::class)->for($this->owner)->create();
+    $session = Clutch::agent(ResearchAgent::class)->for($this->owner)->create();
 
     // Stand in for an application that installed the harness but never
     // published Laravel AI's own migrations. Raised through the store rather

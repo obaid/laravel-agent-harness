@@ -1,13 +1,14 @@
 {
-    "name": "obaid/laravel-agent-harness",
-    "description": "Durable, observable agent runtimes for Laravel, powered by the official Laravel AI SDK.",
+    "name": "obaid/laravel-clutch",
+    "description": "The durable runtime layer for Laravel AI agents. Sessions, resumable runs, replayable events, human approvals, and budgets.",
     "keywords": [
         "laravel",
         "ai",
         "agents",
-        "harness",
+        "clutch",
         "durable",
-        "queue"
+        "queue",
+        "harness"
     ],
     "license": "MIT",
     "type": "library",
@@ -37,12 +38,12 @@
     },
     "autoload": {
         "psr-4": {
-            "AgentHarness\\Laravel\\": "src/"
+            "Clutch\\Laravel\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "AgentHarness\\Laravel\\Tests\\": "tests/"
+            "Clutch\\Laravel\\Tests\\": "tests/"
         }
     },
     "config": {
@@ -55,10 +56,10 @@
     "extra": {
         "laravel": {
             "providers": [
-                "AgentHarness\\Laravel\\AgentHarnessServiceProvider"
+                "Clutch\\Laravel\\ClutchServiceProvider"
             ],
             "aliases": {
-                "Harness": "AgentHarness\\Laravel\\Facades\\Harness"
+                "Clutch": "Clutch\\Laravel\\Facades\\Clutch"
             }
         }
     },

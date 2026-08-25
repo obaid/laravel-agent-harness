@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Runtime;
+namespace Clutch\Laravel\Runtime;
 
-use AgentHarness\Laravel\Artifacts\ArtifactRegistrar;
-use AgentHarness\Laravel\Data\ToolInvocation;
-use AgentHarness\Laravel\Enums\PermissionMode;
-use AgentHarness\Laravel\Models\Run;
-use AgentHarness\Laravel\Models\Session;
 use Closure;
+use Clutch\Laravel\Artifacts\ArtifactRegistrar;
+use Clutch\Laravel\Data\ToolInvocation;
+use Clutch\Laravel\Enums\PermissionMode;
+use Clutch\Laravel\Models\Run;
+use Clutch\Laravel\Models\Session;
 use Psr\Log\LoggerInterface;
 
 /**

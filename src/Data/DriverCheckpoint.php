@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Data;
+namespace Clutch\Laravel\Data;
 
 /**
  * A versioned, opaque snapshot of driver state.

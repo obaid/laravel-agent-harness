@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Streaming;
+namespace Clutch\Laravel\Streaming;
 
-use AgentHarness\Laravel\Models\Run;
-use AgentHarness\Laravel\Runtime\EventStore;
+use Clutch\Laravel\Models\Run;
+use Clutch\Laravel\Runtime\EventStore;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -92,7 +92,7 @@ class EventStreamResponse
     /**
      * @return array<int, string>
      */
-    protected function framesFor(\AgentHarness\Laravel\Models\RunEvent $event, ?VercelDataProtocol $protocol): array
+    protected function framesFor(\Clutch\Laravel\Models\RunEvent $event, ?VercelDataProtocol $protocol): array
     {
         if (! $protocol instanceof VercelDataProtocol) {
             return ["id: {$event->sequence}\nevent: {$event->type->value}\n"

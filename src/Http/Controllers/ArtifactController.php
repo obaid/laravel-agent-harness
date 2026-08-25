@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Http\Controllers;
+namespace Clutch\Laravel\Http\Controllers;
 
-use AgentHarness\Laravel\Models\Artifact;
+use Clutch\Laravel\Models\Artifact;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;

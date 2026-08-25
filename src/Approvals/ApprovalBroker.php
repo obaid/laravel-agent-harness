@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Approvals;
+namespace Clutch\Laravel\Approvals;
 
-use AgentHarness\Laravel\Data\ApprovalDecision;
-use AgentHarness\Laravel\Data\PendingApproval;
-use AgentHarness\Laravel\Enums\ApprovalStatus;
-use AgentHarness\Laravel\Enums\EventType;
-use AgentHarness\Laravel\Events\ApprovalRequested;
-use AgentHarness\Laravel\Events\ApprovalResolved;
-use AgentHarness\Laravel\Exceptions\ApprovalAlreadyResolved;
-use AgentHarness\Laravel\Exceptions\ApprovalNotFound;
-use AgentHarness\Laravel\Models\Approval;
-use AgentHarness\Laravel\Models\Run;
-use AgentHarness\Laravel\Runtime\EventStore;
-use AgentHarness\Laravel\Support\Id;
+use Clutch\Laravel\Data\ApprovalDecision;
+use Clutch\Laravel\Data\PendingApproval;
+use Clutch\Laravel\Enums\ApprovalStatus;
+use Clutch\Laravel\Enums\EventType;
+use Clutch\Laravel\Events\ApprovalRequested;
+use Clutch\Laravel\Events\ApprovalResolved;
+use Clutch\Laravel\Exceptions\ApprovalAlreadyResolved;
+use Clutch\Laravel\Exceptions\ApprovalNotFound;
+use Clutch\Laravel\Models\Approval;
+use Clutch\Laravel\Models\Run;
+use Clutch\Laravel\Runtime\EventStore;
+use Clutch\Laravel\Support\Id;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;

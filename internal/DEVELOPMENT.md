@@ -28,11 +28,11 @@ SQLite may be used for fast unit tests but is not sufficient for concurrency, JS
 ## 3. Repository structure
 
 ```text
-laravel-agent-harness/
+laravel-clutch/
 ├── README.md
 ├── composer.json
 ├── config/
-│   └── agent-harness.php
+│   └── clutch.php
 ├── database/
 │   ├── factories/
 │   └── migrations/
@@ -41,16 +41,16 @@ laravel-agent-harness/
 │   ├── DEVELOPMENT.md
 │   └── adr/
 ├── routes/
-│   └── agent-harness.php
+│   └── clutch.php
 ├── src/
-│   ├── AgentHarnessServiceProvider.php
-│   ├── HarnessManager.php
+│   ├── ClutchServiceProvider.php
+│   ├── ClutchManager.php
 │   ├── Approvals/          ApprovalBroker
 │   ├── Artifacts/          Artifact value object, manager, run-scoped registrar
 │   ├── Budgets/            BudgetManager, CostEstimator
 │   ├── Checkpoints/        CheckpointStore
 │   ├── Console/            inspection, retry, cancel, reap, prune, generator
-│   ├── Contracts/          HarnessDriver, DriverEventSink, IdempotentTool, …
+│   ├── Contracts/          ClutchDriver, DriverEventSink, IdempotentTool, …
 │   ├── Data/               typed commands and results crossing the driver boundary
 │   ├── Drivers/            FakeDriver, LaravelAi/
 │   ├── Enums/              closed state sets
@@ -66,7 +66,7 @@ laravel-agent-harness/
 │   ├── Sandbox/            NullSandboxProvider
 │   ├── Streaming/          StreamedRun, SSE, Vercel protocol
 │   ├── Support/            Id
-│   ├── Testing/            HarnessFake, DriverContractTests, RecordingSink
+│   ├── Testing/            ClutchFake, DriverContractTests, RecordingSink
 │   ├── Tools/              ToolExecutionLedger
 │   └── ValueObjects/       RunBudget, BudgetUsage, DriverCapabilities, NormalizedFailure
 └── tests/
@@ -116,7 +116,7 @@ Expose specific domain exceptions:
 - `InvalidStateTransition`
 - `ApprovalNotFound`
 - `ApprovalAlreadyResolved`
-- `HarnessCapabilityUnsupported`
+- `CapabilityUnsupported`
 - `BudgetExceeded`
 - `LeaseUnavailable`
 - `CheckpointIncompatible`
@@ -145,14 +145,14 @@ Run formatting with Laravel Pint. Use PHPStan or Larastan at the highest practic
 
 Create tables in dependency order:
 
-1. `agent_harness_sessions`
-2. `agent_harness_runs`
+1. `clutch_sessions`
+2. `clutch_runs`
 3. Add nullable `active_run_id` foreign key to sessions
-4. `agent_harness_events`
-5. `agent_harness_approvals`
-6. `agent_harness_checkpoints`
-7. `agent_harness_artifacts`
-8. `agent_harness_tool_executions`
+4. `clutch_events`
+5. `clutch_approvals`
+6. `clutch_checkpoints`
+7. `clutch_artifacts`
+8. `clutch_tool_executions`
 
 Migration requirements:
 
@@ -212,7 +212,7 @@ Acceptance:
 
 Deliver:
 
-- `HarnessDriver` contract
+- `ClutchDriver` contract
 - Capability object
 - Driver registry
 - Driver session/checkpoint value objects
@@ -473,7 +473,7 @@ Rules:
 ## 10. Adding a driver
 
 1. Create a separate namespace or extension package.
-2. Implement `HarnessDriver`.
+2. Implement `ClutchDriver`.
 3. Declare truthful capabilities.
 4. Version checkpoint schemas.
 5. Normalize runtime events.

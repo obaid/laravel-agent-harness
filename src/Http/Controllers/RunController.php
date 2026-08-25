@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Http\Controllers;
+namespace Clutch\Laravel\Http\Controllers;
 
-use AgentHarness\Laravel\Models\Run;
-use AgentHarness\Laravel\Runtime\HarnessResult;
+use Clutch\Laravel\Models\Run;
+use Clutch\Laravel\Runtime\ClutchResult;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -18,7 +18,7 @@ class RunController
     {
         $model = Run::query()->with('session')->findOrFail($run)->authorizeFor($request->user());
 
-        return new JsonResponse(HarnessResult::fromRun($model)->toArray());
+        return new JsonResponse(ClutchResult::fromRun($model)->toArray());
     }
 
     public function events(Request $request, string $run): JsonResponse

@@ -39,7 +39,7 @@ stage ../README.md guide 'Guide' 1
 # at docs/ rather than at sibling pages.
 sed -i.bak \
     -e '/^\[Documentation\](https:\/\/obaid.github.io/d' \
-    -e 's|](docs/RECIPES.md)|](/laravel-agent-harness/recipes/)|g' \
+    -e 's|](docs/RECIPES.md)|](/laravel-clutch/recipes/)|g' \
     pages/guide.md && rm -f pages/guide.md.bak
 
 # The guide is one long page, so give it an on-page contents list. Inserted

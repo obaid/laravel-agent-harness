@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use AgentHarness\Laravel\Enums\RunStatus;
-use AgentHarness\Laravel\Enums\SessionStatus;
+use Clutch\Laravel\Enums\RunStatus;
+use Clutch\Laravel\Enums\SessionStatus;
 
 it('treats exactly the four end states as terminal', function (): void {
     $terminal = array_filter(RunStatus::cases(), fn (RunStatus $s): bool => $s->isTerminal());

@@ -20,7 +20,7 @@ That is the engine. The trouble starts when the work does not fit in one request
 Laravel AI does not try to be the runtime that owns that lifecycle. This package is.
 
 ```php
-$session = Harness::agent(ResearchAgent::class)->for($user)->create();
+$session = Clutch::agent(ResearchAgent::class)->for($user)->create();
 
 $result = $session->prompt('Research our competitors and recommend a wedge.');
 ```
@@ -36,9 +36,9 @@ Budgets cover steps, tool calls, tokens, cost, and duration, and they carry acro
 ## Install
 
 ```bash
-composer require obaid/laravel-agent-harness
+composer require obaid/laravel-clutch
 
-php artisan vendor:publish --provider="AgentHarness\Laravel\AgentHarnessServiceProvider"
+php artisan vendor:publish --provider="Clutch\Laravel\ClutchServiceProvider"
 php artisan vendor:publish --provider="Laravel\Ai\AiServiceProvider"
 
 php artisan migrate

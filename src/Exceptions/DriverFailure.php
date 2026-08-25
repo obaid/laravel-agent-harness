@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AgentHarness\Laravel\Exceptions;
+namespace Clutch\Laravel\Exceptions;
 
-final class DriverFailure extends HarnessException
+final class DriverFailure extends ClutchException
 {
     public function errorCode(): string
     {
@@ -18,6 +18,6 @@ final class DriverFailure extends HarnessException
 
     public static function from(string $driver, string $message): self
     {
-        return new self("The [{$driver}] harness driver failed: {$message}");
+        return new self("The [{$driver}] driver failed: {$message}");
     }
 }
