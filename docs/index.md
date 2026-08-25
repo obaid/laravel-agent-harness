@@ -44,7 +44,7 @@ php artisan vendor:publish --provider="Laravel\Ai\AiServiceProvider"
 php artisan migrate
 ```
 
-Requires PHP 8.3 or newer, Laravel 12 or 13, and `laravel/ai` 0.11 or newer.
+Requires PHP 8.3 or newer, Laravel 12 or 13, and `laravel/ai` 0.11.x. Laravel AI is still pre-1.0, so the constraint pins the minor on purpose rather than tracking it forward untested.
 
 ## Or don't read any of this
 

@@ -1,4 +1,9 @@
-# Laravel Clutch
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/obaid/laravel-clutch/main/art/logo-dark.png">
+    <img src="https://raw.githubusercontent.com/obaid/laravel-clutch/main/art/logo.png" alt="Laravel Clutch" width="440">
+  </picture>
+</p>
 
 [![Latest version](https://img.shields.io/packagist/v/obaid/laravel-clutch.svg?style=flat-square)](https://packagist.org/packages/obaid/laravel-clutch)
 [![Tests](https://img.shields.io/github/actions/workflow/status/obaid/laravel-clutch/tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/obaid/laravel-clutch/actions/workflows/tests.yml)

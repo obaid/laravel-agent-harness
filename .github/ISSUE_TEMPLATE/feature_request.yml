@@ -1,0 +1,29 @@
+name: Feature request
+description: Suggest something the harness should do
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: >
+        What are you trying to do, and where does the package get in the way?
+        Describe the situation rather than the solution you have in mind, so
+        there is room to find a better one.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you had in mind
+      description: If you have a shape in mind, sketch the API.
+      render: php
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you tried instead
+      description: >
+        Including whether you can already do this in application code. Plenty
+        of things belong in your app rather than in the harness.

@@ -5,6 +5,25 @@ Notable changes to `obaid/laravel-clutch`.
 This project follows [Semantic Versioning](https://semver.org). Before v1.0, a
 breaking change needs a changelog entry and an upgrade note.
 
+## v0.2.1 - 2026-08-25
+
+Nothing in the runtime changed. This is packaging and documentation for the
+public release.
+
+Laravel 13 is now covered by CI. The composer constraint and the README have
+claimed Laravel 12 or 13 since the first release, but the test matrix only ever
+ran 12, so the claim was true and unguarded. The matrix now runs both, at both
+`prefer-lowest` and `prefer-stable`.
+
+Added setup prompts for coding agents at
+[/agents/](https://obaid.github.io/laravel-clutch/agents/), an `llms.txt` index
+at the docs root, and an `llms-full.txt` holding the guide and every recipe as
+one file. Both are generated from the same sources as the site.
+
+Also adds a logo, contribution and security policies, issue templates, and a
+Used by section. Corrects the home page, which described the `laravel/ai`
+constraint as "0.11 or newer" when `^0.11` resolves to 0.11.x only.
+
 ## v0.2.0 - 2026-08-25
 
 Makes the tool protections actually run.

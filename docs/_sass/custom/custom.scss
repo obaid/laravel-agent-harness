@@ -459,3 +459,12 @@ samp {
     columns: 1;
   }
 }
+
+// The hero uses the wordmark itself as the page title. The h1 stays for
+// structure and screen readers; the image carries the name.
+.hero__logo {
+  display: block;
+  width: min(460px, 78%);
+  height: auto;
+  margin: 0 auto;
+}

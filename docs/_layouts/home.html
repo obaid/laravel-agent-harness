@@ -5,7 +5,9 @@ layout: default
 <div class="hero">
   <span class="hero__eyebrow">Laravel 12 &amp; 13</span>
 
-  <h1 class="hero__title">{{ site.title }}</h1>
+  <h1 class="hero__title">
+    <img class="hero__logo" src="{{ '/assets/img/logo.png' | relative_url }}" alt="{{ site.title }}">
+  </h1>
 
   <p class="hero__lede">
     An agent harness for Laravel, built on the official Laravel AI SDK. Sessions

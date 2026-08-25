@@ -1,0 +1,68 @@
+name: Bug report
+description: Something behaves differently from what the docs say
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing, two things account for most reports:
+
+        - Tools only get approvals, idempotency, loop guards and spilling if
+          the agent returns them through `Clutch::policy([...])`. Returning
+          them directly fails silently.
+        - Queued runs need a worker on the Clutch queue, or they sit in
+          `queued` forever with no error.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you expected, and what you got instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: >
+        Steps, or better, a failing test. The smallest agent and tool that
+        shows the problem is worth more than a description of a large one.
+      render: php
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Clutch version
+      placeholder: v0.2.1
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: PHP, Laravel, and laravel/ai versions
+      placeholder: PHP 8.4, Laravel 13.27, laravel/ai 0.11.0
+    validations:
+      required: true
+
+  - type: input
+    id: database
+    attributes:
+      label: Database and queue driver
+      description: >
+        Worth telling us. Several of the guarantees rely on row locking and
+        cache locks, which behave differently on SQLite than on PostgreSQL.
+      placeholder: PostgreSQL 16, Redis
+    validations:
+      required: true
+
+  - type: textarea
+    id: anything-else
+    attributes:
+      label: Anything else
+      description: >
+        Relevant config from `config/clutch.php`, the run's events from
+        `php artisan clutch:events`, or a stack trace.

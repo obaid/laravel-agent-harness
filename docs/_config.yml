@@ -1,4 +1,9 @@
 title: Laravel Clutch
+
+# Replaces the sidebar title. The scheme is dark-only, so this is the
+# light-wordmark variant.
+logo: "/assets/img/logo.png"
+
 description: An agent harness for Laravel, built on the official Laravel AI SDK.
 
 # The gem rather than remote_theme: one less network fetch at build time,
