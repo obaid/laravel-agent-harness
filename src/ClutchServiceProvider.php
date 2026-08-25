@@ -41,6 +41,7 @@ use Clutch\Laravel\Tools\SpillPolicy;
 use Clutch\Laravel\Tools\ToolExecutionLedger;
 use Clutch\Laravel\ValueObjects\RunBudget;
 use Clutch\Laravel\Workflows\WorkflowAgentCaller;
+use Clutch\Laravel\Workflows\WorkflowDriver;
 use Clutch\Laravel\Workflows\WorkflowRunner;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Broadcast;
@@ -183,7 +184,15 @@ class ClutchServiceProvider extends ServiceProvider
     {
         $this->app->singleton(DriverRegistry::class, fn ($app): DriverRegistry => new DriverRegistry(
             container: $app,
-            config: (array) $app['config']->get('clutch.drivers', []),
+            config: [
+                // Workflows are a built-in runtime rather than a provider the
+                // user chooses between, so they are registered here rather
+                // than depending on a published config file. An application
+                // that published `clutch.php` before workflows existed would
+                // otherwise upgrade into a driver that does not resolve.
+                'workflow' => ['driver' => WorkflowDriver::class],
+                ...(array) $app['config']->get('clutch.drivers', []),
+            ],
             default: (string) $app['config']->get('clutch.default_driver', 'laravel-ai'),
         ));
 

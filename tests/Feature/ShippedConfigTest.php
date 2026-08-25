@@ -107,3 +107,22 @@ it('says so when a driver entry has no class at all', function (): void {
     expect(fn () => $registry->driver('empty'))
         ->toThrow(Clutch\Laravel\Exceptions\DriverNotFound::class);
 });
+
+it('resolves the workflow driver even when the published config predates it', function (): void {
+    // An application that published clutch.php before workflows existed has no
+    // `workflow` entry. It is a built-in runtime, so it must resolve anyway.
+    config()->set('clutch.drivers', [
+        'laravel-ai' => ['driver' => Clutch\Laravel\Drivers\LaravelAi\LaravelAiDriver::class],
+    ]);
+
+    $registry = new DriverRegistry(
+        container: app(),
+        config: [
+            'workflow' => ['driver' => Clutch\Laravel\Workflows\WorkflowDriver::class],
+            ...config('clutch.drivers'),
+        ],
+    );
+
+    expect($registry->driver('workflow'))
+        ->toBeInstanceOf(Clutch\Laravel\Workflows\WorkflowDriver::class);
+});
