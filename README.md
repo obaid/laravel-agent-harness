@@ -12,6 +12,8 @@
 
 An agent harness for Laravel, built on the official [Laravel AI SDK](https://laravel.com/docs/ai).
 
+A community package. Not affiliated with or endorsed by Laravel.
+
 [Documentation](https://obaid.github.io/laravel-clutch/) · [Recipes](https://obaid.github.io/laravel-clutch/recipes/) · [Set it up with an agent](https://obaid.github.io/laravel-clutch/agents/)
 
 Laravel AI gives you the agent. Clutch is the harness around it: sessions that outlive a request, runs you can queue and resume, an ordered event history you can replay, human approvals that survive a deploy, budgets, cancellation, and artifacts.
