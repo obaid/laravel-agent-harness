@@ -205,8 +205,15 @@ class RunCoordinator
                 'session_id' => $locked->id,
                 'attempt' => 1,
                 'status' => RunStatus::Created,
-                'input_type' => 'prompt',
-                'input' => ['prompt' => $prompt, 'attachments' => $attachments],
+                'input_type' => (string) ($options['input_type'] ?? 'prompt'),
+                // Drivers that need more than a prompt string, such as a
+                // workflow payload, put it here rather than smuggling it
+                // through the prompt.
+                'input' => [
+                    'prompt' => $prompt,
+                    'attachments' => $attachments,
+                    ...(array) ($options['input'] ?? []),
+                ],
                 'idempotency_key' => $options['idempotency_key'] ?? null,
                 'budget' => $options['budget'] ?? null,
                 'metadata' => $options['metadata'] ?? null,
@@ -467,7 +474,11 @@ class RunCoordinator
                             $continuation->decisions,
                             $limits,
                             $streaming,
-                            ['budget' => $budget, 'participant' => $session->participant],
+                            [
+                                'budget' => $budget,
+                                'participant' => $session->participant,
+                                'input' => $run->input ?? [],
+                            ],
                         ),
                         $recorder,
                         $cancellation,
@@ -484,7 +495,10 @@ class RunCoordinator
                         budget: $budget,
                         limits: $limits,
                         streaming: $streaming,
-                        options: ['participant' => $session->participant],
+                        options: [
+                            'participant' => $session->participant,
+                            'input' => $run->input ?? [],
+                        ],
                     ),
                     $recorder,
                     $cancellation,

@@ -5,6 +5,62 @@ Notable changes to `obaid/laravel-clutch`.
 This project follows [Semantic Versioning](https://semver.org). Before v1.0, a
 breaking change needs a changelog entry and an upgrade note.
 
+## v0.3.0 - 2026-08-25
+
+Adds workflows.
+
+Until now everything in Clutch was agent-driven: you prompt, and the model
+decides what happens next. That is the right shape when the model genuinely
+owns the plan, and the wrong one when you already know the plan and only need
+judgement in the middle of it.
+
+A workflow is a finite job whose control flow is ordinary PHP. You call an
+agent where a decision actually needs making, and the harness makes the job
+survive the process running it.
+
+```php
+class OnboardCustomer extends Workflow
+{
+    public function handle(array $payload): mixed
+    {
+        $research = $this->step('research', fn () => $this->prompt(...)->text);
+
+        $decision = $this->pause('sign-off', ['research' => $research]);
+
+        return $this->step('provision', fn () => $this->provision($payload));
+    }
+}
+```
+
+`handle()` re-enters from the top on every resume, and `step()` is what makes
+that safe: the closure runs once ever, and later passes return the stored
+result without calling it. Put a charge in a step and it happens once, however
+many times the job restarts. Step results are persisted before the next step
+begins, so a worker lost between two steps never costs the one that finished.
+
+`steps()` runs independent work together through Laravel's concurrency driver,
+persisting each result as it lands, so a resume after a partial failure re-runs
+only what is missing. `pause()` parks the run and releases the worker, and
+`resume()` answers it from anywhere. A rejection comes back to the workflow as
+an answer rather than killing the run, because what a rejection means is the
+workflow's decision and not the harness's.
+
+Workflows also stage inputs into a per-run workspace, declare expected outputs
+with `produces()`, record artifacts, and restore earlier ones for a later
+stage.
+
+A workflow is implemented as an ordinary driver, so it inherits leases,
+budgets, cancellation, the event log, streaming, retries and the orphan reaper
+rather than reimplementing any of them. `clutch:events` shows steps, pauses and
+the agents' own activity in one ordered history.
+
+Two smaller fixes came out of building it. `Clutch::fake()` no longer replaces
+the workflow driver, since a workflow is application control flow rather than a
+model call and faking it would replace the thing under test. And a run's input
+now reaches its driver in full, rather than only the prompt string.
+
+New: `make:clutch-workflow`.
+
 ## v0.2.1 - 2026-08-25
 
 Nothing in the runtime changed. This is packaging and documentation for the

@@ -1,0 +1,47 @@
+<?php
+
+namespace {{ namespace }};
+
+use Clutch\Laravel\Workflows\Workflow;
+
+class {{ class }} extends Workflow
+{
+    /**
+     * The agent prompt() uses when no class is named at the call site.
+     *
+     * @var class-string|null
+     */
+    protected static ?string $agent = null;
+
+    /**
+     * Do the work.
+     *
+     * This runs from the top again on every resume, so anything you cannot
+     * afford to repeat belongs inside step(). A step runs once ever: on a
+     * resume its stored result comes back without the closure being called.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public function handle(array $payload): mixed
+    {
+        $result = $this->step('first', function () use ($payload) {
+            return $payload;
+        });
+
+        // Appears in clutch:events and on the run's stream, next to
+        // everything the agents did.
+        $this->emit('finished', ['size' => count($result)]);
+
+        return $result;
+    }
+
+    /**
+     * Workspace paths to collect as artifacts once handle() returns.
+     *
+     * @return array<int, string>
+     */
+    public function produces(): array
+    {
+        return [];
+    }
+}

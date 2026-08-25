@@ -14,6 +14,7 @@ use Clutch\Laravel\Compaction\Compactor;
 use Clutch\Laravel\Console\CancelRunCommand;
 use Clutch\Laravel\Console\EventsCommand;
 use Clutch\Laravel\Console\MakeClutchAgentCommand;
+use Clutch\Laravel\Console\MakeClutchWorkflowCommand;
 use Clutch\Laravel\Console\PruneCommand;
 use Clutch\Laravel\Console\ReapCommand;
 use Clutch\Laravel\Console\RetryRunCommand;
@@ -39,6 +40,8 @@ use Clutch\Laravel\Streaming\EventStreamResponse;
 use Clutch\Laravel\Tools\SpillPolicy;
 use Clutch\Laravel\Tools\ToolExecutionLedger;
 use Clutch\Laravel\ValueObjects\RunBudget;
+use Clutch\Laravel\Workflows\WorkflowAgentCaller;
+use Clutch\Laravel\Workflows\WorkflowRunner;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
@@ -165,6 +168,9 @@ class ClutchServiceProvider extends ServiceProvider
 
         $this->app->singleton(ArtifactManager::class);
 
+        $this->app->singleton(WorkflowAgentCaller::class);
+        $this->app->singleton(WorkflowRunner::class);
+
         $this->app->singleton(EventStreamResponse::class, fn ($app): EventStreamResponse => new EventStreamResponse(
             events: $app->make(EventStore::class),
             pollIntervalMicroseconds: (int) $app['config']->get('clutch.streaming.poll_interval_ms', 250) * 1000,
@@ -275,6 +281,7 @@ class ClutchServiceProvider extends ServiceProvider
             PruneCommand::class,
             ReapCommand::class,
             MakeClutchAgentCommand::class,
+            MakeClutchWorkflowCommand::class,
         ]);
     }
 

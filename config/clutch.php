@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Clutch\Laravel\Drivers\LaravelAi\LaravelAiDriver;
 use Clutch\Laravel\Enums\PermissionMode;
+use Clutch\Laravel\Workflows\WorkflowDriver;
 
 return [
 
@@ -29,6 +30,33 @@ return [
             'model' => env('CLUTCH_MODEL'),
             'timeout' => env('CLUTCH_TIMEOUT', 120),
         ],
+
+        // Workflows are a runtime like any other, which is what gives them
+        // leases, budgets, cancellation and recovery for free.
+        'workflow' => [
+            'driver' => WorkflowDriver::class,
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Workflows
+    |--------------------------------------------------------------------------
+    |
+    | A workflow is a finite job whose control flow is yours: ordinary PHP that
+    | calls agents where judgement is needed. Steps are remembered, so a resume
+    | after a pause, a lost worker or a deploy skips work that already happened.
+    |
+    */
+
+    'workflows' => [
+        // Whether steps() may run its work concurrently. Uses Laravel's own
+        // concurrency driver, so `sync` in tests behaves predictably.
+        'concurrent_steps' => env('CLUTCH_CONCURRENT_STEPS', true),
+
+        // Discard a workflow's staged scratch once the session is destroyed.
+        // Artifacts are recorded separately and are never touched by this.
+        'discard_workspace' => env('CLUTCH_DISCARD_WORKFLOW_WORKSPACE', true),
     ],
 
     /*

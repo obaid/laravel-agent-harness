@@ -121,6 +121,31 @@ writing your own. Replay from the cursor first, then go live, so a reload does
 not lose the steps that happened while the page was gone.
 ```
 
+## Build a workflow
+
+For a job whose shape you already know, where the agent handles the judgement in the middle.
+
+```text
+Build this as a Laravel Clutch workflow: <describe the job>
+
+Read https://obaid.github.io/laravel-clutch/llms.txt and the workflows section
+of the guide it links to.
+
+Generate it with `php artisan make:clutch-workflow`. The rules that matter:
+
+  - handle() runs from the top again on every resume, so anything that must
+    not repeat goes inside $this->step('name', fn () => ...). A step runs its
+    closure once ever and returns the stored result on re-entry.
+  - step results must survive a JSON round trip. Return an id, not a model.
+  - use $this->pause('name', [...]) where a human decides. The run parks and
+    the worker exits; nothing holds a connection while it waits.
+  - use $this->prompt(...) to call an agent from inside the workflow.
+  - independent work goes in $this->steps([...]) so it runs together.
+
+Show me which operations you put in steps and why, especially anything that
+charges money or sends a message.
+```
+
 ## Check its work
 
 Agents get most of this right and a few things reliably wrong. Four things worth looking at before you trust the diff.
@@ -132,6 +157,8 @@ Agents get most of this right and a few things reliably wrong. Four things worth
 **Is there a worker?** Queued runs do nothing at all without one, and the first symptom is a run stuck in `queued` with no error anywhere.
 
 **Did it invent a method?** The fastest check is `php artisan clutch:sessions` and `php artisan clutch:events`, which fail loudly against a real database if the wiring is wrong.
+
+**In a workflow, is the irreversible work inside a step?** This is the workflow equivalent of the `Clutch::policy()` mistake, and it fails the same quiet way. A charge written outside a step works perfectly until the first resume, and then it charges twice.
 
 ## For your agent
 

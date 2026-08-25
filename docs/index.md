@@ -33,6 +33,20 @@ Durable sessions keep context alive across a request, a worker, and a deploy. Ev
 
 Budgets cover steps, tool calls, tokens, cost, and duration, and they carry across retries so a failing loop cannot spend the same ceiling twice. Cancellation is cooperative and durable, and honest about the tools it cannot interrupt. Artifacts get integrity hashes and authorized downloads. A ledger keeps a retried tool from firing its side effect a second time. When a worker vanishes, the harness notices and retries the work as a new attempt rather than reopening a finished record.
 
+## Workflows
+
+Sometimes the model does not need to decide the plan, only the hard part in the middle. A workflow is a finite job where you write the control flow and call an agent where judgement is actually needed.
+
+```php
+$research = $this->step('research', fn () => $this->prompt("Research {$domain}")->text);
+
+$decision = $this->pause('sign-off', ['research' => $research]);
+
+return $this->step('provision', fn () => $this->provision($decision));
+```
+
+A step runs once, ever. Resume after a pause, a crashed worker or a deploy and the body re-enters from the top with everything that already finished skipped. Put the charge in a step and the card is charged once, however many times the job restarts.
+
 ## Install
 
 ```bash

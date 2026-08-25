@@ -539,6 +539,167 @@ Give a session a subset when it should not see everything:
 Clutch::agent(SupportAgent::class)->withSkills(['refund-policy'])->create();
 ```
 
+## Workflows
+
+An agent decides what to do next. Sometimes you already know, and the only
+open question is the judgement in the middle.
+
+A workflow is a finite job where you write the control flow in ordinary PHP
+and call an agent at the points that actually need one. What the harness adds
+is that the job survives the process running it.
+
+```bash
+php artisan make:clutch-workflow OnboardCustomer
+```
+
+```php
+use Clutch\Laravel\Workflows\Workflow;
+
+class OnboardCustomer extends Workflow
+{
+    protected static ?string $agent = ResearchAgent::class;
+
+    public function handle(array $payload): mixed
+    {
+        $research = $this->step('research', fn () => $this->prompt(
+            "Research {$payload['domain']} and summarise how they sell."
+        )->text);
+
+        $this->emit('researched', ['chars' => strlen($research)]);
+
+        $decision = $this->pause('sign-off', ['research' => $research]);
+
+        if (! $decision['approved']) {
+            return ['skipped' => $decision['reason']];
+        }
+
+        return $this->step('provision', fn () => $this->provision($payload, $research));
+    }
+}
+```
+
+```php
+$run = OnboardCustomer::dispatch(['domain' => 'acme.com']);
+
+// Later, from another request entirely.
+Workflow::resume($run->id, ['approved' => true]);
+```
+
+### Steps run once, ever
+
+`handle()` runs from the top again on every resume. That is deliberate, and it
+is the only rule you need to hold in your head: **anything you cannot afford to
+repeat goes inside a step.**
+
+The first time through, a step runs its closure and stores the result. Every
+later re-entry returns the stored value without calling the closure at all.
+Results are persisted before the next step begins, so a worker that dies
+between two steps never costs you the one that just finished.
+
+```php
+$invoice = $this->step('charge', fn () => $this->stripe->charge($customer));
+```
+
+Resume that workflow a dozen times and the card is charged once.
+
+The same applies to a failure. A workflow that fails in its fourth step and is
+retried with `clutch:retry` re-enters with the first three already done.
+
+Step results have to survive a JSON round trip, which rules out returning a
+model. Return the id and look it up.
+
+### Steps that do not depend on each other
+
+```php
+$data = $this->steps([
+    'account' => fn () => $this->billing->account($id),
+    'usage'   => fn () => $this->metrics->usage($id),
+]);
+```
+
+These run together through Laravel's own concurrency driver, and each is
+persisted as it lands. If one fails, the resume re-runs only that one. Set
+`clutch.workflows.concurrent_steps` to `false` to run them in sequence, which
+is sometimes what you want in a test.
+
+### Pausing for a human
+
+`pause()` stops the workflow, writes a checkpoint, and lets the worker exit.
+Nothing holds a connection, a process, or an open transaction while the answer
+is outstanding.
+
+```php
+$decision = $this->pause('sign-off', ['draft' => $draft], 'Check the pricing claim.');
+```
+
+The array you pass is what the decision maker sees. Whatever `resume()` is
+given comes back as the return value, so a rejection is an answer rather than
+a failure: the workflow decides what to do with it.
+
+```php
+Workflow::resume($run->id, ['approved' => false, 'reason' => 'Fix the pricing claim.']);
+```
+
+Under the hood this is the same approval machinery agents use, so the pending
+records, the endpoints, and the events are the ones you already have.
+
+### Agents inside a workflow
+
+`prompt()` calls the workflow's declared agent, or any other:
+
+```php
+$draft = $this->prompt("Write it up:\n{$research}", WriterAgent::class)->text;
+```
+
+Each agent gets a session of its own, created once per workflow run and then
+reused, so a second prompt continues the same conversation. Those sessions
+record the workflow that caused them, which is what lets you trace an agent's
+run back to the job it belonged to.
+
+### Files and outputs
+
+Stage inputs before any work begins, and declare what you expect to come out:
+
+```php
+public function produces(): array
+{
+    return ['reports/*.md'];
+}
+
+public function handle(array $payload): mixed
+{
+    $this->stage(['brief.txt' => $payload['brief']]);
+
+    // ... work happens, writing into the workspace ...
+
+    $this->workspace()->put('reports/findings.md', $findings);
+}
+```
+
+Anything matching `produces()` is collected into artifacts when `handle()`
+returns, with integrity hashes and authorized downloads like any other
+artifact. `artifact()` records one directly, and `restoreArtifacts()` pulls
+earlier ones back into the workspace for a later stage to read.
+
+The workspace is an ordinary Laravel disk scoped to the run, so staging works
+with no sandbox provisioned at all. A provider that gives real isolation mounts
+that same path rather than inventing its own.
+
+### What you get for free
+
+A workflow is a session and a run like any other, which is the whole reason to
+build it this way. Budgets, cancellation, leases, the event log, `clutch:events`,
+the SSE stream, retries, and the reaper that recovers a run from a worker that
+vanished all apply without workflows reimplementing any of it.
+
+```bash
+php artisan clutch:events {run}   # steps, pauses, and agent activity in order
+php artisan clutch:retry {run}    # re-enters, skipping the steps that finished
+```
+
+Cancellation is checked between steps, never inside one, because a step that
+has begun is not safe to abandon halfway.
+
 ## Long runs that outlive a worker
 
 A run that takes twenty minutes will meet a queue worker timeout. Rather than

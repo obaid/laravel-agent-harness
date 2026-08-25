@@ -9,13 +9,16 @@ declare(strict_types=1);
 
 use Clutch\Laravel\Artifacts\Artifact;
 use Clutch\Laravel\Enums\PermissionMode;
+use Clutch\Laravel\Enums\RunStatus;
 use Clutch\Laravel\Events\ClutchEventRecorded;
 use Clutch\Laravel\Facades\Clutch;
 use Clutch\Laravel\Runtime\ClutchResult;
 use Clutch\Laravel\Tests\Fixtures\Agents\PublishingAgent;
 use Clutch\Laravel\Tests\Fixtures\Agents\ResearchAgent;
 use Clutch\Laravel\Tests\Fixtures\Agents\ScoringAgent;
+use Clutch\Laravel\Tests\Fixtures\Workflows\OnboardCustomer;
 use Clutch\Laravel\ValueObjects\RunBudget;
+use Clutch\Laravel\Workflows\Workflow;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
@@ -326,4 +329,36 @@ it('tests a paused run', function (): void {
     Clutch::assertApprovalRequested('publish_article');
 
     expect($run->refresh()->status->value)->toBe('awaiting_approval');
+});
+
+it('runs the workflows example', function (): void {
+    OnboardCustomer::$provisioned = [];
+
+    Clutch::fake([ClutchResult::text('They sell bottom-up, through the product.')]);
+
+    $run = OnboardCustomer::dispatch(['domain' => 'acme.com']);
+
+    expect($run->refresh()->status)->toBe(RunStatus::AwaitingApproval)
+        ->and(OnboardCustomer::$provisioned)->toBe([]);
+
+    Workflow::resume($run->id, ['approved' => true]);
+
+    expect($run->refresh()->status)->toBe(RunStatus::Completed)
+        ->and($run->structured_output['provisioned'])->toBe('acme.com')
+        // Re-entering the body did not research the same domain twice.
+        ->and(OnboardCustomer::$provisioned)->toBe(['acme.com']);
+});
+
+it('runs the workflows rejection example', function (): void {
+    OnboardCustomer::$provisioned = [];
+
+    Clutch::fake([ClutchResult::text('They sell bottom-up.')]);
+
+    $run = OnboardCustomer::dispatch(['domain' => 'acme.com']);
+
+    Workflow::resume($run->id, ['approved' => false, 'reason' => 'Fix the pricing claim.']);
+
+    expect($run->refresh()->status)->toBe(RunStatus::Completed)
+        ->and($run->structured_output['skipped'])->toBe('Fix the pricing claim.')
+        ->and(OnboardCustomer::$provisioned)->toBe([]);
 });

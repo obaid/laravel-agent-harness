@@ -45,11 +45,26 @@ class ClutchFake extends ClutchManager
     }
 
     /**
-     * Point every configured driver name at the fake and run queued work inline.
+     * Driver names the fake leaves alone.
+     *
+     * A workflow is application control flow, not a model call. Faking it
+     * would replace the very thing the test is about, while the agents it
+     * prompts still need to be faked underneath it.
+     *
+     * @var array<int, string>
+     */
+    protected array $passthrough = ['workflow'];
+
+    /**
+     * Point every model-backed driver name at the fake and run queued work inline.
      */
     public function bind(): static
     {
         foreach ([...$this->drivers->names(), 'laravel-ai', 'fake'] as $name) {
+            if (in_array($name, $this->passthrough, true)) {
+                continue;
+            }
+
             $this->drivers->register($name, $this->driver);
         }
 
