@@ -983,6 +983,15 @@ The `laravel-ai` driver checkpoints at safe model and tool boundaries. It does n
 
 It also will not claim to interrupt a tool that cannot be interrupted, and it cannot make a non idempotent external action safe to retry.
 
+## A demo you can try to break
+
+[obaid/laravel-clutch-demo](https://github.com/obaid/laravel-clutch-demo) is a
+small Laravel app where an agent researches a topic, drafts a post, and stops to
+ask before publishing. Every screen is something that would go wrong in a naive
+build: close the tab and the work carries on, reload mid-run and the stream
+resumes from your cursor, kill the worker and the reaper recovers the run from
+its checkpoint.
+
 ## Documentation
 
 Full docs at [obaid.github.io/laravel-clutch](https://obaid.github.io/laravel-clutch/), including [recipes](https://obaid.github.io/laravel-clutch/recipes/) for approval inboxes, live progress UIs, multi tenant scoping, and spend caps.
