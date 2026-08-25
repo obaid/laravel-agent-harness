@@ -1006,12 +1006,13 @@ It also will not claim to interrupt a tool that cannot be interrupted, and it ca
 
 ## A demo you can try to break
 
-[obaid/laravel-clutch-demo](https://github.com/obaid/laravel-clutch-demo) is a
-small Laravel app where an agent researches a topic, drafts a post, and stops to
-ask before publishing. Every screen is something that would go wrong in a naive
-build: close the tab and the work carries on, reload mid-run and the stream
-resumes from your cursor, kill the worker and the reaper recovers the run from
-its checkpoint.
+[obaid/laravel-clutch-demo](https://github.com/obaid/laravel-clutch-demo) is a mock CRM with an assistant panel down the right-hand side. It reads deals, logs notes, moves things between stages, and stops to ask before it emails a prospect or discounts a deal.
+
+![The demo app: a deals table with the assistant panel paused on an approval card for an outbound email](art/demo.jpg)
+
+Every screen is something that would go wrong in a naive build. Close the tab and the work carries on. Reload mid-run and the stream resumes from your cursor, approval card included, because it rebuilds from the event log rather than from browser memory. Ask for the same discount three times and the tool body still runs once. Kill the worker and the reaper recovers the run from its checkpoint.
+
+Five of its seven tools never ask permission, which is the part worth copying. Approval is for the two things you cannot take back.
 
 ## Documentation
 
