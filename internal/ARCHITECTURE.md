@@ -169,7 +169,7 @@ Drivers may throw `HarnessCapabilityUnsupported` for optional methods, but only 
 A driver returns exactly one outcome from a turn: `completed`, `awaiting_approval`,
 `cancelled`, `failed`, or `budget_exceeded`. The last exists so a driver that
 enforces a limit mid-turn can say so precisely, rather than reporting a generic
-failure the coordinator would have to guess at.
+failure the coordinator would have to interpret.
 
 ### Driver capabilities
 
@@ -536,10 +536,10 @@ read-then-write approximation: a racy lease that silently permits two
 coordinators for one session is precisely the failure this component exists to
 prevent. Every cache store Laravel ships except `null` qualifies.
 
-Liveness is tested by attempting to take the lease, not by reading the key — a
-cache lock does not live under a key `has()` can observe, so a direct read
-reports "free" for a lease that is very much held. Anything acting on the answer
-holds the lease itself rather than checking and then acting.
+Liveness is tested by attempting to take the lease rather than by reading the
+key. A cache lock does not live under a key `has()` can observe, so a direct
+read reports "free" for a lease that is very much held. Anything acting on the
+answer holds the lease itself rather than checking and then acting.
 
 A job may be delivered more than once. Duplicate delivery must exit safely after observing that another worker holds the lease or the expected state/version no longer matches.
 
@@ -725,10 +725,10 @@ Domain models map to tables as follows.
 Two additions beyond section 4, both supporting behavior the contract already
 required:
 
-- `Runtime\Redactor` — applies configured key redaction and per-tool
+- `Runtime\Redactor` applies configured key redaction and per-tool
   serializers before persistence, and backs the checkpoint store's refusal to
   persist a secret.
-- `Budgets\CostEstimator` — converts token usage into an estimated dollar
+- `Budgets\CostEstimator` converts token usage into an estimated dollar
   figure from a configured rate table, so `max_cost_usd` has something to
   measure against. An unpriced model contributes zero rather than a guess.
 

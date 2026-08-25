@@ -62,7 +62,7 @@ laravel-agent-harness/
 │   ├── Leases/             LeaseManager, Lease
 │   ├── Models/             Eloquent models for querying
 │   ├── Policies/           PolicyEngine, PolicyDecision
-│   ├── Runtime/            RunCoordinator, EventStore, DriverRegistry, RunContext, …
+│   ├── Runtime/            RunCoordinator, EventStore, DriverRegistry, RunContext
 │   ├── Sandbox/            NullSandboxProvider
 │   ├── Streaming/          StreamedRun, SSE, Vercel protocol
 │   ├── Support/            Id

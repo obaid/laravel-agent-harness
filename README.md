@@ -1,10 +1,10 @@
 # Laravel Agent Harness
 
-Durable, observable agent runtimes for Laravel, powered by the official [Laravel AI SDK](https://laravel.com/docs/ai).
+Durable, observable agent runtimes for Laravel, built on the official [Laravel AI SDK](https://laravel.com/docs/ai).
 
-Laravel Agent Harness adds the runtime layer that long-running application agents need: persistent sessions, resumable runs, event replay, human approvals, artifacts, budgets, cancellation, and pluggable runtime drivers.
+[Documentation](https://obaid.github.io/laravel-agent-harness/) · [Recipes](https://obaid.github.io/laravel-agent-harness/recipes/)
 
-The Laravel AI SDK remains the model and tool engine. Laravel Agent Harness owns everything around the engine.
+Laravel AI gives you the agent. This package gives you everything around it: sessions that outlive a request, runs you can queue and resume, an ordered event history you can replay, human approvals that survive a deploy, budgets, cancellation, and artifacts.
 
 ```php
 $session = Harness::agent(ResearchAgent::class)->for($user)->create();
@@ -12,61 +12,50 @@ $session = Harness::agent(ResearchAgent::class)->for($user)->create();
 $result = $session->prompt('Research our competitors and recommend a wedge.');
 ```
 
-That looks like a normal call. The difference is what survives it: the session, the run, every event in order, the usage, the artifacts, and the ability to pick all of it back up in another process tomorrow.
-
----
+That reads like an ordinary call, and it is. What changes is what remains afterward: a session you can continue tomorrow, a run record with usage and cost, and every event in order.
 
 ## Why this exists
 
-The official Laravel AI SDK makes it beautifully simple to define an agent, give it tools, and prompt it:
+Prompting an agent with Laravel AI is already easy:
 
 ```php
-$response = (new ResearchAgent)->prompt('Research our competitors and create a positioning brief.');
+$response = (new ResearchAgent)->prompt('Research our competitors and write a brief.');
 ```
 
-That is the agent **engine**. It handles the conversation with the model, executes the tool loop, and returns a response.
+That is the engine. It talks to the model, runs the tool loop, and hands you a response.
 
-But a production agent rarely fits neatly inside one request and one response.
+The trouble starts when the work does not fit in one request. Say the agent has to read fifty pages, call a few APIs, write a document, and get sign off before publishing. While it runs, any of this can happen:
 
-Imagine that research agent needs to inspect 50 websites, call several APIs, produce a document, and ask for approval before publishing it. While it works:
+* Someone closes the browser and comes back after lunch.
+* A deploy restarts the queue worker mid run.
+* A rate limit forces a retry ten minutes later.
+* The publishing tool succeeds, then the worker dies before recording that it did.
+* The agent pauses for approval and gets an answer the next morning, from a different process.
+* The frontend drops the connection after event 42 and needs the ones it missed.
+* The run passes its cost ceiling and has to stop without corrupting anything.
 
-- The user closes the browser and comes back later.
-- A deployment restarts the queue worker.
-- An API rate limit forces a delayed retry.
-- A publishing tool succeeds, but the worker dies before recording its result.
-- The agent pauses for approval and gets the decision hours later, in another process.
-- The frontend disconnects after event 42 and needs the events it missed.
-- The run hits its cost ceiling and has to stop safely.
+Laravel AI covers a lot of ground already: agents, conversations, tools, streaming, queues, approvals, sub agents, MCP, structured output, and provider abstraction. What it deliberately leaves alone is the runtime that owns the whole lifecycle of that work.
 
-Laravel AI provides many of the primitives involved — agents, conversations, tools, streaming, queues, approvals, sub-agents, MCP, structured output, provider abstraction. What it does not try to be is the durable runtime that owns the complete lifecycle of that work.
+So every application ends up writing the same layer. Session and run tables. Queue orchestration and execution locks. Status transitions and audit history. Stream persistence and reconnect logic. Approval endpoints and continuation jobs. Checkpoints, crash recovery, tool idempotency, cancellation, budgets, usage accounting, artifact storage, tenant isolation, redaction, and the commands to inspect all of it.
 
-Without a harness, every application ends up rebuilding the same infrastructure: session and run tables, queue orchestration and execution locks, status transitions and audit history, stream persistence and reconnect logic, approval endpoints and continuation jobs, checkpoints and crash recovery, tool idempotency, cancellation, budgets, usage accounting, artifact storage, tenant isolation, redaction, and operational tooling.
+This package is that layer, written once.
 
-This package makes those concerns a reusable, Laravel-native layer.
-
-| Question | Owner |
+| Question | Answered by |
 | --- | --- |
 | Which model should answer this prompt? | Laravel AI |
 | Which tools can the model call? | Laravel AI and your application |
-| What conversation context does the model receive? | Laravel AI conversation |
-| Who owns the run after the HTTP request ends? | **Laravel Agent Harness** |
-| What happens when the browser or worker disconnects? | **Laravel Agent Harness** |
-| Has this tool already performed its side effect? | **Laravel Agent Harness** |
-| How does an approval resume in another process? | **Laravel Agent Harness** |
-| What exactly happened, in what order, and at what cost? | **Laravel Agent Harness** |
+| What conversation context does the model get? | Laravel AI |
+| Who owns the run after the HTTP request ends? | This package |
+| What happens when the browser or worker disconnects? | This package |
+| Has this tool already performed its side effect? | This package |
+| How does an approval resume in another process? | This package |
+| What happened, in what order, and at what cost? | This package |
 
-> **Laravel AI runs the agent. Laravel Agent Harness keeps the agent running safely.**
-
-This is not another model abstraction or agent framework. It is the missing production runtime around Laravel AI, built on Laravel's own queues, events, broadcasting, storage, policies, database, container, and testing fakes.
-
----
-
+Laravel AI runs the agent. This package keeps it running safely across requests, workers, and deploys. It is not another model abstraction or agent framework, and it is built on Laravel's own queues, events, broadcasting, storage, policies, database, container, and testing fakes.
 
 ## Where it sits
 
-The harness wraps Laravel AI rather than replacing it. Your agents, tools, and
-provider configuration stay exactly as they are — the harness owns the lifecycle
-around them.
+The harness wraps Laravel AI instead of replacing it. Your agents, tools, and provider configuration stay exactly as they are.
 
 ```mermaid
 flowchart LR
@@ -100,28 +89,18 @@ flowchart LR
     class Agent,Conversation,Provider ai
 ```
 
-<sub>**Indigo** is yours · **teal** is the harness · **amber** is Laravel AI.</sub>
+<sub>Indigo is yours. Teal is the harness. Amber is Laravel AI.</sub>
 
-Read it as three responsibilities:
+Laravel AI talks to the model, runs the tool loop, and remembers the conversation. The harness decides when a turn starts, what gets recorded, who may approve what, when to stop, and how to pick the work back up. Your application starts the work, renders progress, and decides who approves.
 
-- **Laravel AI** talks to the model, runs the tool loop, and remembers the
-  conversation. Untouched.
-- **The harness** decides when a turn starts, what is recorded, who may approve
-  what, when to stop, and how to pick the work back up. Every state change goes
-  through one coordinator, so the transaction rules hold in one place.
-- **Your application** starts work, renders progress, and decides who approves.
+Durability comes from a few unglamorous rules. The queue job is dispatched only after the run's state commits. Events are written before they are broadcast. An approval resolved in a completely separate process is what wakes the run back up.
 
-The dashed arrows are the parts that make it durable: the queue job is
-dispatched only after the run's state commits, events are persisted before they
-are broadcast, and an approval resolved in a completely separate process is what
-resumes the run.
-
-### What one turn actually does
+### What one turn does
 
 ```
    $session->prompt(…)
         │
-        ├─ createRun ─────────────── run.created        ← one active run per session, enforced by a row lock
+        ├─ createRun ─────────────── run.created        ← one active run per session, held by a row lock
         ├─ acquire session lease ─────────────────────  ← one worker, or the job exits
         ├─ restore checkpoint ────────────────────────  ← the conversation the last turn left
         ├─ transition to running ── run.started
@@ -131,7 +110,7 @@ resumes the run.
         │   │  text.delta × n                          │
         │   │  tool.call.requested   ← ledger checks   │  budgets checked at each
         │   │  tool.call.completed     idempotency     │  boundary; cancellation
-        │   │  step.completed                          │  observed before any new step
+        │   │  step.completed                          │  observed before a new step
         │   └──────────────────────────────────────────┘
         │
         ├─ store checkpoint ──────── checkpoint.created
@@ -140,38 +119,34 @@ resumes the run.
                                                           the active-run slot clears in the same write
 ```
 
-If the agent hits an approvable tool, the middle of that diagram ends at
-`run.awaiting_approval` instead, the worker exits, and the whole sequence
-resumes from the checkpoint whenever the decision arrives.
-
----
+If the agent hits a tool that needs approval, the middle of that sequence ends at `run.awaiting_approval`, the worker exits, and everything resumes from the checkpoint once a decision arrives.
 
 ## Requirements
 
-- PHP 8.3+
-- Laravel 12 or 13
-- `laravel/ai` 0.11+
-- PostgreSQL recommended for production
-- Redis recommended for queues, leases, and broadcasting
+* PHP 8.3 or newer
+* Laravel 12 or 13
+* `laravel/ai` 0.11 or newer
+* PostgreSQL for production. SQLite is fine for tests.
+* Redis for queues, leases, and broadcasting
 
 ## Installation
 
 ```bash
 composer require obaid/laravel-agent-harness
 
-# The harness's own tables.
+# The harness tables.
 php artisan vendor:publish --provider="AgentHarness\Laravel\AgentHarnessServiceProvider"
 
 # Laravel AI's conversation tables, if you have not published them already.
-# The harness stores session context there, so this step is not optional.
+# Session context lives there, so this step is not optional.
 php artisan vendor:publish --provider="Laravel\Ai\AiServiceProvider"
 
 php artisan migrate
 ```
 
-Configure at least one Laravel AI provider as described in the [Laravel AI documentation](https://laravel.com/docs/ai).
+Configure at least one Laravel AI provider the usual way.
 
-Give agents their own queue while you are here — a run that takes four minutes should not sit in front of your password-reset emails:
+Give agents a queue of their own while you are here. A run that takes four minutes should not sit in front of your password reset emails.
 
 ```env
 AGENT_HARNESS_QUEUE_CONNECTION=redis
@@ -182,37 +157,34 @@ AGENT_HARNESS_QUEUE=agents
 php artisan queue:work redis --queue=agents
 ```
 
----
-
 ## The mental model
 
-Five concepts, and that is the whole surface:
+Five nouns, and that is the whole surface.
 
 | Concept | Meaning |
 | --- | --- |
-| **Agent** | A Laravel AI agent class: instructions and tools |
-| **Session** | Durable agent identity, context, configuration, optional workspace |
-| **Run** | One execution attempt inside a session |
-| **Event** | An append-only fact emitted during a run |
-| **Artifact** | A durable output: a document, report, image, export |
+| Agent | A Laravel AI agent class: instructions and tools |
+| Session | Durable identity, context, configuration, optional workspace |
+| Run | One execution attempt inside a session |
+| Event | An append only fact emitted during a run |
+| Artifact | A durable output: a document, report, image, export |
 
-A session may contain many sequential runs. **A session has exactly one active run at a time.**
+A session holds many runs, one after another, and only one of them can be active at a time.
 
----
+## Getting started
 
-## Quick start
-
-### 1. Create an agent
+### Write an agent
 
 ```bash
 php artisan make:harness-agent ResearchAgent
 ```
 
-That generates an ordinary Laravel AI agent with one thing already wired up:
+You get an ordinary Laravel AI agent with one extra thing wired in:
 
 ```php
 namespace App\Ai\Agents;
 
+use AgentHarness\Laravel\Facades\Harness;
 use Laravel\Ai\Concerns\RemembersConversations;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\HasTools;
@@ -235,14 +207,14 @@ class ResearchAgent implements Agent, HasTools, RemembersConversationsContract
 
     public function tools(): iterable
     {
-        return [new SearchWeb, new FetchPage];
+        return Harness::policy([new SearchWeb, new FetchPage]);
     }
 }
 ```
 
-> **The `RemembersConversations` trait is not optional.** Laravel AI only persists a conversation for agents that use it, and both durable sessions and cross-process approvals depend on that conversation. The harness refuses to create a session for an agent without it, and the error message tells you exactly what to add. For a genuinely single-turn agent, opt out explicitly with `->configure('stateless', true)`.
+The `RemembersConversations` trait is doing real work here. Laravel AI only persists a conversation for agents that use it, and both durable sessions and cross process approvals depend on that conversation existing. Create a session with an agent that lacks the trait and the harness refuses, with an error that shows you the exact code to add. If the agent really is single turn, say so on purpose with `->configure('stateless', true)`.
 
-### 2. Create a session and prompt it
+### Create a session and prompt it
 
 ```php
 use AgentHarness\Laravel\Facades\Harness;
@@ -266,9 +238,9 @@ return [
 ];
 ```
 
-The harness persists the session, run, events, tool activity, approvals, artifacts, usage, and terminal result.
+The session, run, events, tool activity, approvals, artifacts, usage, and terminal result are all persisted.
 
-### 3. Continue it later
+### Continue it later
 
 ```php
 $session = Harness::session($sessionId)->authorizeFor($request->user());
@@ -276,13 +248,11 @@ $session = Harness::session($sessionId)->authorizeFor($request->user());
 $result = $session->prompt('Turn the recommendation into a one-page strategy memo.');
 ```
 
-The driver restores the right conversation and runtime state. You never replay chat messages by hand.
-
----
+The driver restores the right conversation and runtime state, so you never replay chat messages by hand.
 
 ## Background runs
 
-Queue a run for long-running work:
+Queue anything that will take a while:
 
 ```php
 $run = $session->queue('Analyze every page on our website and produce a content gap report.');
@@ -294,7 +264,7 @@ return response()->accepted([
 ]);
 ```
 
-Configure queue behavior globally in `config/agent-harness.php`, or per session:
+Queue behavior is configurable globally in `config/agent-harness.php`, or per session:
 
 ```php
 $session = Harness::agent(ResearchAgent::class)
@@ -304,10 +274,6 @@ $session = Harness::agent(ResearchAgent::class)
     ->timeout(seconds: 900)
     ->create();
 ```
-
-Give agents their own queue. A run that takes four minutes should never sit in front of your password-reset emails.
-
----
 
 ## Streaming and reconnecting
 
@@ -323,26 +289,24 @@ Route::post('/research', function (Request $request) {
 });
 ```
 
-That plugs directly into the Vercel AI SDK's `useChat`. Drop `usingVercelDataProtocol()` to stream the harness's own event envelope instead.
+That plugs directly into the Vercel AI SDK's `useChat`. Drop `usingVercelDataProtocol()` and you get the harness event envelope instead.
 
-For queued runs, clients consume the harness event stream:
+Queued runs are consumed through the event stream:
 
 ```http
 GET /api/agent-harness/runs/{run}/events?after=42
 Accept: text/event-stream
 ```
 
-Every event carries a monotonically increasing sequence number. If the browser disconnects after event `42`, it reconnects with `after=42`; the server replays stored events and then continues live.
+Every event carries a sequence number that only goes up. A browser that disconnects after event 42 reconnects with `after=42`, and the server replays what it stored before switching to live events.
 
-Delivery is at least once. **Consumers deduplicate by `(run_id, sequence)`.**
+Network delivery is at least once, so clients should deduplicate by `(run_id, sequence)`. Storage is exactly once and ordered.
 
-The same history is recorded whether a run was streamed directly or executed on a queue, so a reconnecting client's view never depends on how the run was started.
-
----
+The stored history is the same whether a run was streamed directly or executed on a queue, so a reconnecting client sees the same thing either way.
 
 ## Human approval
 
-Laravel AI approvable tools surface automatically as durable harness approvals.
+Approvable Laravel AI tools become durable harness approvals on their own.
 
 ```php
 use Laravel\Ai\Concerns\InteractsWithApprovals;
@@ -356,7 +320,7 @@ class PublishArticle implements Tool, Approvable
 }
 ```
 
-When the agent reaches that tool, the run pauses, a checkpoint is written, and the worker **exits normally**. Nothing is held open. Hours or days later, in a different process:
+When the agent reaches that tool the run pauses, a checkpoint is written, and the worker exits normally. Nothing sits open holding a connection. Hours later, in a different process:
 
 ```php
 $run = Harness::run($runId)->authorizeFor($user);
@@ -367,7 +331,7 @@ $run->approve(
 );
 ```
 
-Reject an action:
+Rejecting works the same way:
 
 ```php
 $run->reject(
@@ -376,11 +340,11 @@ $run->reject(
 );
 ```
 
-A rejection reaches the agent as a tool result it can react to, rather than killing the run.
+A rejection comes back to the agent as a tool result it can respond to, rather than killing the run outright.
 
-An approval decision is **idempotent**: repeating the same decision returns the existing result. Attempting to reverse a resolved decision raises `ApprovalAlreadyResolved`.
+Decisions are idempotent. Repeating one returns the existing result. Trying to reverse a resolved decision raises `ApprovalAlreadyResolved`.
 
-The package ships endpoints for all of this:
+Endpoints for all of this ship with the package:
 
 ```http
 GET  /api/agent-harness/runs/{run}/approvals
@@ -388,7 +352,7 @@ POST /api/agent-harness/runs/{run}/approvals/{approval}/approve
 POST /api/agent-harness/runs/{run}/approvals/{approval}/reject
 ```
 
-Hook your own notifications off the event:
+Notifications are yours to wire up:
 
 ```php
 Event::listen(ApprovalRequested::class, function (ApprovalRequested $event) {
@@ -412,11 +376,11 @@ $session = Harness::agent(PublishingAgent::class)
 | Mode | Behavior |
 | --- | --- |
 | `DenyByDefault` | Only explicitly allowed tools may run |
-| `ApproveSensitive` | Safe tools run; sensitive tools require approval |
-| `ApproveAll` | Every state-changing tool requires approval |
-| `AllowAll` | Tools run without harness approval; for trusted environments |
+| `ApproveSensitive` | Safe tools run, sensitive ones need approval |
+| `ApproveAll` | Every state changing tool needs approval |
+| `AllowAll` | No harness approval, for trusted environments |
 
-Classify your tools in `config/agent-harness.php`:
+Classify tools in configuration:
 
 ```php
 'permissions' => [
@@ -440,9 +404,9 @@ class PublishArticle implements Tool, SensitiveTool
 }
 ```
 
-**A tool you have not classified is treated as sensitive.** Guessing in the safe direction is the only guess worth making.
+A tool you have not classified counts as sensitive.
 
-To make the mode apply, hand your tool list through `Harness::policy()`:
+For the mode to apply, pass your tool list through `Harness::policy()`:
 
 ```php
 public function tools(): iterable
@@ -455,17 +419,13 @@ public function tools(): iterable
 }
 ```
 
-Laravel AI asks the agent for its tools on every turn and the list is usually built fresh each time, so the harness cannot rewrite it after the fact — the agent passes it through instead. `make:harness-agent` generates this for you.
+Laravel AI asks the agent for its tools on every turn and that list is usually rebuilt each time, so the harness cannot rewrite it afterward. The agent hands it over instead. `make:harness-agent` writes this for you.
 
-With that in place:
+With that in place, a tool the mode denies is withheld from the agent completely. The model is never told it exists, since refusing after the fact would still have exposed the capability. A tool that needs sign off is marked approvable, which is what pauses the run and creates the durable approval. Outside a harness run `Harness::policy()` does nothing at all, so the same agent still behaves normally when you prompt it directly through Laravel AI.
 
-- A tool the mode **denies** is withheld from the agent entirely. The model is never told it exists, because refusing after the fact would still have exposed the capability.
-- A tool that **needs sign-off** is marked approvable, which is what turns it into a durable harness approval and pauses the run.
-- Outside a harness run, `Harness::policy()` is a no-op, so the same agent still behaves normally when prompted directly through Laravel AI.
+A tool that asks for approval on its own, through Laravel AI's `requireApproval()`, is making its author's call rather than the harness's. `AllowAll` relaxes harness policy and leaves that alone.
 
-A tool that asks for approval on its own — via Laravel AI's `requireApproval()` — is making its author's declaration, not the harness's. `AllowAll` relaxes the harness policy; it does not override the tool.
-
-Laravel authorization policies still apply regardless of permission mode. Application rules can layer on too, and the most restrictive result wins:
+Laravel authorization policies apply regardless of mode. Application rules can layer on as well, and the most restrictive answer wins:
 
 ```php
 app(PolicyEngine::class)->extend(function (ToolInvocation $invocation, ToolSensitivity $sensitivity) {
@@ -475,11 +435,9 @@ app(PolicyEngine::class)->extend(function (ToolInvocation $invocation, ToolSensi
 });
 ```
 
----
-
 ## Budgets
 
-Constrain a session or an individual run:
+Constrain a session or a single run:
 
 ```php
 use AgentHarness\Laravel\ValueObjects\RunBudget;
@@ -496,17 +454,17 @@ $session = Harness::agent(ResearchAgent::class)
     ->create();
 ```
 
-Budgets layer: configuration defaults, then the session, then the run. **The most restrictive limit at each level wins** — a session can tighten a limit, never loosen it.
+Budgets layer: configuration defaults first, then the session, then the run. At each level the more restrictive limit wins, so a session can tighten a ceiling but never raise it.
 
-When a hard budget is reached, the run transitions to `budget_exceeded`, emits a terminal event naming the limit that ran out, and keeps its last safe checkpoint.
+A run that hits a hard limit moves to `budget_exceeded`, emits a terminal event naming the limit that ran out, and keeps its last safe checkpoint.
 
-Usage carries across attempts by default, so a failing retry loop cannot spend the same budget repeatedly. Reset it explicitly when you mean to:
+Usage carries across attempts, so a retry loop cannot spend the same budget three times. Reset it when you actually mean to:
 
 ```php
 $run->retry(resetBudget: true);
 ```
 
-For `maxCostUsd` to do anything, tell the harness what your models cost:
+`maxCostUsd` needs prices to work against:
 
 ```php
 // config/agent-harness.php
@@ -516,9 +474,7 @@ For `maxCostUsd` to do anything, tell the harness what your models cost:
 ],
 ```
 
-An unpriced model contributes `0.00` rather than a guess, which is visible in the usage record rather than silently wrong.
-
----
+An unpriced model contributes `0.00` rather than a guess. That shows up in the usage record, which beats a plausible number that happens to be wrong.
 
 ## Cancellation
 
@@ -528,9 +484,9 @@ $run = Harness::run($runId)->authorizeFor($user);
 $run->cancel(reason: 'The request is no longer needed.');
 ```
 
-Cancellation is **cooperative**. The harness records the request immediately, signals the active driver, and prevents any new model step or tool from starting. A tool already executing may finish unless that tool supports interruption — the package does not pretend otherwise.
+Cancellation is cooperative. The request is recorded immediately, the active driver is signalled, and no new model step or tool starts after that. A tool already running may finish, unless it supports interruption. The package does not pretend otherwise.
 
-Long-running tools can cooperate:
+Long running tools can cooperate:
 
 ```php
 public function handle(Request $request): string
@@ -544,8 +500,6 @@ public function handle(Request $request): string
     }
 }
 ```
-
----
 
 ## Artifacts
 
@@ -569,20 +523,18 @@ Or write the bytes as part of attaching them:
 Artifact::fromContents($markdown, 'reports/gap.md')->name('Content gap report');
 ```
 
-Retrieve them from a result or a run:
+Read them back from a result or a run:
 
 ```php
 $artifacts = $result->artifacts;
 $artifacts = Harness::run($runId)->artifacts;
 ```
 
-Artifact contents stay on the configured filesystem disk. The database stores metadata, ownership, a SHA-256 for integrity, and a storage reference — never the bytes, and never inside an event payload.
-
----
+Contents stay on the filesystem disk you configured. The database holds metadata, ownership, a SHA-256 for integrity, and a storage reference. The bytes never land in an event payload.
 
 ## Idempotent tools
 
-Tools that cause external side effects should implement `IdempotentTool`:
+Any tool with an external side effect should implement `IdempotentTool`:
 
 ```php
 use AgentHarness\Laravel\Contracts\IdempotentTool;
@@ -602,15 +554,13 @@ final class PublishArticle implements Tool, IdempotentTool
 }
 ```
 
-The harness records the key and a pending row **before** the tool runs, so a worker that dies mid-execution leaves evidence. A repeated invocation returns the stored result instead of repeating the side effect.
+The key and a pending row are committed before the tool runs, so a worker that dies halfway through still leaves evidence behind. A repeat invocation returns the stored result instead of firing the side effect again.
 
-A tool without an idempotency contract is recorded for audit, but the harness makes no duplicate-suppression claim on its behalf — it cannot safely make one.
-
----
+A tool with no idempotency contract still gets recorded for audit, but the harness makes no duplicate suppression claim for it. Only you know what counts as the same action.
 
 ## Events
 
-Every event uses the same envelope:
+Every event uses one envelope:
 
 ```json
 {
@@ -628,23 +578,23 @@ Every event uses the same envelope:
 }
 ```
 
-Core event types:
+The core types:
 
 `run.created` · `run.queued` · `run.started` · `text.delta` · `reasoning.delta` · `step.started` · `step.completed` · `tool.call.requested` · `tool.call.completed` · `tool.call.failed` · `approval.requested` · `approval.resolved` · `artifact.created` · `usage.updated` · `checkpoint.created` · `run.awaiting_approval` · `run.completed` · `run.failed` · `run.cancelled` · `run.budget_exceeded`
 
-Listen through Laravel events without depending on the transport:
+Listen through Laravel events, with no dependency on the transport:
 
 ```php
 use AgentHarness\Laravel\Events\HarnessEventRecorded;
 
 Event::listen(HarnessEventRecorded::class, function (HarnessEventRecorded $event) {
-    // Audit, analytics, metering, notifications, or custom broadcasting.
+    // Audit, analytics, metering, notifications, or your own broadcasting.
 });
 ```
 
 ### Redaction
 
-**Redaction happens before persistence, not before display.** A configured sensitive key never enters the database at all:
+Redaction runs before persistence, not before display, so a configured key never reaches the database:
 
 ```php
 'events' => [
@@ -652,7 +602,7 @@ Event::listen(HarnessEventRecorded::class, function (HarnessEventRecorded $event
 ],
 ```
 
-Tool arguments often carry business-sensitive values that are not secrets. Register a serializer that keeps only the fields you approve:
+Tool arguments often carry business sensitive values that are not secrets. Register a serializer that keeps only the fields you approve:
 
 ```php
 class EmailEventSerializer implements EventSerializer
@@ -673,11 +623,9 @@ class EmailEventSerializer implements EventSerializer
 ],
 ```
 
----
-
 ## Structured output
 
-Laravel AI structured agents work normally:
+Structured Laravel AI agents work as they normally do:
 
 ```php
 $result = $session->prompt('Score this draft against our content rubric.');
@@ -685,19 +633,17 @@ $result = $session->prompt('Score this draft against our content rubric.');
 $score = $result->structured['score'];
 ```
 
-The validated structured value is stored on the terminal run record and emitted with `run.completed`.
-
----
+The validated value is stored on the terminal run record and emitted with `run.completed`.
 
 ## Drivers
 
-The default `laravel-ai` driver runs ordinary Laravel AI agents inside your application workers:
+The default `laravel-ai` driver runs ordinary Laravel AI agents inside your own workers:
 
 ```php
 $session = Harness::agent(ResearchAgent::class)->driver('laravel-ai')->create();
 ```
 
-Drivers normalize different runtimes behind the same session, run, event, approval, checkpoint, and artifact contracts.
+Drivers put different runtimes behind one set of session, run, event, approval, checkpoint, and artifact contracts.
 
 ```php
 // A future coding-agent driver.
@@ -708,7 +654,7 @@ $session = Harness::runtime('codex')
     ->create();
 ```
 
-Drivers **declare their capabilities**, and the harness checks before it acts. Asking for something a driver cannot do fails with `HarnessCapabilityUnsupported` before any work starts. The harness never silently degrades a requested safety or durability feature.
+Every driver declares what it can do, and the harness checks before it acts. Asking for something a driver does not support fails with `HarnessCapabilityUnsupported` before any work begins, so a safety or durability feature never quietly degrades into something weaker.
 
 Writing a driver? There is a shared contract suite you can point at it:
 
@@ -722,19 +668,15 @@ it('passes the harness driver contract', function () {
 });
 ```
 
-Capabilities you do not declare are skipped rather than failed, so a deliberately limited driver still passes. What it may not do is claim a capability it does not have.
-
----
+Capabilities you do not declare are skipped rather than failed, so a deliberately limited driver still passes. What it cannot do is claim a capability it lacks.
 
 ## Workspaces and sandboxes
 
-Application agents do not need a sandbox. Laravel AI tools execute in the Laravel host under normal application authorization.
+Application agents do not need a sandbox. Laravel AI tools run in the Laravel host under your normal authorization.
 
-Runtimes that need a filesystem, shell, browser, or isolated process may request a workspace and a sandbox provider. Sandbox providers are optional extensions; the default driver uses `NullSandboxProvider`.
+Runtimes that want a filesystem, shell, browser, or isolated process can ask for a workspace and a sandbox provider. Those providers are optional extensions, and the default driver uses `NullSandboxProvider`.
 
-Secrets are resolved at runtime, scoped to the session, and never stored in event payloads, checkpoints, artifacts, or the user-visible workspace. The checkpoint store *enforces* this — a driver that tries to checkpoint a configured secret key gets an exception, not a silent strip.
-
----
+Secrets are resolved at runtime, scoped to the session, and never written into event payloads, checkpoints, artifacts, or the visible workspace. The checkpoint store enforces this: a driver that tries to checkpoint a configured secret key gets an exception rather than a quietly stripped value.
 
 ## Inspecting runs
 
@@ -761,13 +703,11 @@ php artisan harness:prune                 # apply retention windows
    8 21:15:13.010 run.completed         Their weakest flank is onboarding.
 ```
 
-Sensitive fields are already absent, because they never reached storage.
-
----
+Sensitive fields are already gone, because they never reached storage.
 
 ## Testing
 
-Fake the entire harness. No provider, no queue worker, no network — but the real coordinator, event store, approvals, and artifacts:
+Fake the harness. No provider, no queue worker, no network, but the real coordinator, event store, approvals, and artifacts:
 
 ```php
 use AgentHarness\Laravel\Facades\Harness;
@@ -802,7 +742,7 @@ $run = $session->queue('Publish the approved article.');
 Harness::assertApprovalRequested('publish_article');
 ```
 
-Script richer runs:
+Script richer ones:
 
 ```php
 Harness::fake([
@@ -815,20 +755,18 @@ Harness::fake([
 ]);
 ```
 
-Available assertions: `assertSessionCreated`, `assertNoSessionCreated`, `assertRunQueued`, `assertRunCompleted`, `assertRunFailed`, `assertRunCancelled`, `assertRunExceededBudget`, `assertRunAwaitingApproval`, `assertApprovalRequested`, `assertApproved`, `assertRejected`, `assertNothingAwaitingApproval`, `assertArtifactCreated`, `assertEventRecorded`, `assertPromptedTimes`, `assertNothingPrompted`.
+The assertions available: `assertSessionCreated`, `assertNoSessionCreated`, `assertRunQueued`, `assertRunCompleted`, `assertRunFailed`, `assertRunCancelled`, `assertRunExceededBudget`, `assertRunAwaitingApproval`, `assertApprovalRequested`, `assertApproved`, `assertRejected`, `assertNothingAwaitingApproval`, `assertArtifactCreated`, `assertEventRecorded`, `assertPromptedTimes`, `assertNothingPrompted`.
 
-Failure messages tell you what actually happened, not just that something did not:
+Failure messages say what actually happened:
 
 ```
 Expected a harness run to have reached [completed] for a prompt containing [Draft a brief].
 Runs recorded: awaiting_approval ("Draft a brief")
 ```
 
----
-
 ## Configuration
 
-The published `config/agent-harness.php` is documented inline. The keys you will reach for first:
+The published `config/agent-harness.php` is commented throughout. The keys you will touch first:
 
 ```php
 return [
@@ -880,41 +818,30 @@ return [
 
 Set `routes.enabled` to `false` if you would rather own the HTTP surface yourself.
 
----
-
-## Guarantees
-
-The v1 contract guarantees:
+## What it guarantees
 
 1. One active run per session.
-2. Ordered, append-only run events.
+2. Ordered, append only run events.
 3. Durable terminal run state.
-4. Replayable events after client reconnection.
+4. Replayable events after a client reconnects.
 5. Idempotent approval decisions.
-6. No new step begins after cancellation is observed.
-7. Unsupported driver capabilities fail explicitly.
-8. Secrets are absent from persisted payloads.
+6. No new step after cancellation is observed.
+7. Unsupported driver capabilities fail loudly.
+8. Secrets stay out of persisted payloads.
 9. Retrying an idempotent tool does not repeat its side effect.
 10. A run is never reported complete before its terminal event and result are committed.
 
-Each of these has a named test in `tests/Feature/InvariantsTest.php`, so a regression shows up as a named failure rather than as odd behavior in production.
+Each of these has a named test, so a regression shows up as a failure with a name on it rather than as strange behavior in production.
 
-### What it does not promise
+### What it does not
 
-The `laravel-ai` driver checkpoints at safe model and tool boundaries. **It does not promise byte-perfect continuation from the middle of an active provider request.** If a worker dies during that request, the current step may be repeated — which is exactly why side-effecting tools need an idempotency contract.
+The `laravel-ai` driver checkpoints at safe model and tool boundaries. It does not promise byte perfect continuation from the middle of an active provider request. If a worker dies during that request the current step may run again, which is exactly why side effecting tools need an idempotency contract.
 
-It also does not claim to interrupt a tool that cannot be interrupted, and it does not make non-idempotent external actions safe to retry.
-
----
+It also will not claim to interrupt a tool that cannot be interrupted, and it cannot make a non idempotent external action safe to retry.
 
 ## Documentation
 
-Everything below, plus the recipes, is published at
-**[obaid.github.io/laravel-agent-harness](https://obaid.github.io/laravel-agent-harness/)**.
-
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — runtime boundaries, state machines, storage, events, reliability, security
-- [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) — local setup, repository structure, testing, implementation order, contribution rules
-- [`docs/RECIPES.md`](docs/RECIPES.md) — end-to-end examples: approval inboxes, live progress UIs, multi-tenant scoping, cost caps
+Full docs at [obaid.github.io/laravel-agent-harness](https://obaid.github.io/laravel-agent-harness/), including [recipes](https://obaid.github.io/laravel-agent-harness/recipes/) for approval inboxes, live progress UIs, multi tenant scoping, and spend caps.
 
 ## License
 

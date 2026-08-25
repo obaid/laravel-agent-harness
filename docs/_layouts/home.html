@@ -1,0 +1,50 @@
+---
+layout: default
+---
+
+<div class="hero">
+  <span class="hero__eyebrow">Laravel 12 &amp; 13</span>
+
+  <h1 class="hero__title">Agents that survive<br>the request.</h1>
+
+  <p class="hero__lede">
+    A durable, observable runtime around the official Laravel AI SDK. Sessions
+    that outlive a request, runs you can queue and resume, and an event history
+    you can replay.
+  </p>
+
+  <div class="hero__actions">
+    <a class="hero__btn hero__btn--primary" href="{{ '/guide/' | relative_url }}">Read the guide</a>
+    <a class="hero__btn" href="{{ '/recipes/' | relative_url }}">Recipes</a>
+    <a class="hero__btn" href="https://github.com/obaid/laravel-agent-harness">GitHub</a>
+  </div>
+</div>
+
+{{ content }}
+
+<div class="features">
+  <div class="feature">
+    <h3>Durable sessions</h3>
+    <p>Context that outlives a request, a worker, and a deploy.</p>
+  </div>
+  <div class="feature">
+    <h3>Replayable events</h3>
+    <p>An ordered, append only history you can resume from any cursor.</p>
+  </div>
+  <div class="feature">
+    <h3>Human approval</h3>
+    <p>Runs pause, release the worker, and wake when a decision lands.</p>
+  </div>
+  <div class="feature">
+    <h3>Budgets</h3>
+    <p>Steps, tools, tokens, cost, and time, carried across retries.</p>
+  </div>
+  <div class="feature">
+    <h3>Idempotent tools</h3>
+    <p>A ledger that keeps a retry from firing a side effect twice.</p>
+  </div>
+  <div class="feature">
+    <h3>Recovery</h3>
+    <p>A lost worker is noticed, and the work retried as a new attempt.</p>
+  </div>
+</div>

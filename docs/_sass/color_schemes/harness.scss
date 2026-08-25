@@ -1,0 +1,42 @@
+// Dark scheme tuned for long technical reading: a near-black ground rather
+// than pure black, one teal accent, and enough contrast on code to read a
+// diff without leaning in.
+
+$color-scheme: dark;
+
+$body-background-color: #0b0e14;
+$sidebar-color: #0b0e14;
+$search-background-color: #11151f;
+$table-background-color: #11151f;
+$code-background-color: #11151f;
+$feedback-color: darken($sidebar-color, 3%);
+
+$body-text-color: #b3bccd;
+$body-heading-color: #f0f4fa;
+$search-result-preview-color: #7c879b;
+$nav-child-link-color: #8b95a8;
+
+$link-color: #3ddbc0;
+$btn-primary-color: #14b8a6;
+$base-button-color: #1a2030;
+
+$border-color: #1e2534;
+
+// Syntax highlighting. Muted enough that the code reads as prose, coloured
+// enough that structure is obvious at a glance.
+$code-linenumber-color: #4a5568;
+
+.highlight {
+  .k, .kd, .kn, .kp, .kr, .kt { color: #c792ea; }  // keywords
+  .s, .s1, .s2, .sb, .sd, .se, .sh, .si, .sx, .sr { color: #a5e075; } // strings
+  .nf, .nx { color: #62d5f5; }                     // functions
+  .nv, .vg, .vi { color: #f0f4fa; }                // variables
+  .nc, .nn { color: #ffcb6b; }                     // classes
+  .c, .c1, .cm, .cs { color: #5c6a7e; font-style: italic; } // comments
+  .o, .ow { color: #89ddff; }                      // operators
+  .m, .mi, .mf { color: #f78c6c; }                 // numbers
+  .p { color: #8b95a8; }                           // punctuation
+  .na { color: #62d5f5; }                          // attributes
+  .gd { color: #ff6b7a; }
+  .gi { color: #a5e075; }
+}

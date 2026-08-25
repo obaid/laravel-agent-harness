@@ -1,18 +1,461 @@
-// The content column is narrower than a systems diagram wants to be. Let
-// diagrams use the full width available and scroll rather than being scaled
-// down to something unreadable.
+// Design layer over just-the-docs. The theme handles structure; this handles
+// typography, rhythm, and the few components the docs actually use.
+
+:root {
+  --harness-accent: #3ddbc0;
+  --harness-accent-dim: rgba(61, 219, 192, 0.12);
+  --harness-surface: #11151f;
+  --harness-surface-raised: #161c28;
+  --harness-border: #1e2534;
+  --harness-muted: #7c879b;
+}
+
+$font-stack: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+$mono-stack: 'JetBrains Mono', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+
+body {
+  font-family: $font-stack;
+  font-size: 16px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.006em;
+}
+
+// Typography ---------------------------------------------------------------
+
+.main-content {
+  max-width: 46rem;
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: $font-stack;
+    font-weight: 650;
+    letter-spacing: -0.021em;
+    line-height: 1.25;
+  }
+
+  h1 {
+    font-size: 2.1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  h2 {
+    font-size: 1.45rem;
+    margin-top: 3.25rem;
+    padding-top: 1.75rem;
+    border-top: 1px solid var(--harness-border);
+  }
+
+  h3 {
+    font-size: 1.12rem;
+    margin-top: 2.25rem;
+    color: #dbe3ef;
+  }
+
+  h4 {
+    font-size: 1rem;
+    margin-top: 1.75rem;
+    color: var(--harness-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.78rem;
+  }
+
+  > p,
+  > ul,
+  > ol {
+    font-size: 1rem;
+    margin-bottom: 1.15rem;
+  }
+
+  li {
+    margin-bottom: 0.4rem;
+  }
+
+  // The first paragraph after the page title carries the summary.
+  > h1:first-of-type + p {
+    font-size: 1.16rem;
+    line-height: 1.6;
+    color: #c8d2e2;
+  }
+
+  a {
+    text-underline-offset: 0.18em;
+    text-decoration-thickness: 1px;
+  }
+
+  strong {
+    color: #dfe6f1;
+    font-weight: 600;
+  }
+}
+
+// Code ---------------------------------------------------------------------
+
+code,
+kbd,
+pre,
+samp {
+  font-family: $mono-stack;
+  font-variant-ligatures: none;
+}
+
+.main-content {
+  // Inline code should read as a token, not a shouted word.
+  li > code,
+  p > code,
+  td > code,
+  h2 > code,
+  h3 > code {
+    background-color: var(--harness-accent-dim);
+    color: #9beedd;
+    border: 0;
+    padding: 0.12em 0.38em;
+    border-radius: 5px;
+    font-size: 0.85em;
+  }
+
+  div.highlighter-rouge,
+  figure.highlight,
+  pre.highlight {
+    background-color: var(--harness-surface);
+    border: 1px solid var(--harness-border);
+    border-radius: 10px;
+    font-size: 0.845rem;
+    line-height: 1.65;
+    margin: 1.4rem 0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  }
+
+  div.highlighter-rouge > div.highlight,
+  div.highlighter-rouge pre.highlight {
+    border: 0;
+    box-shadow: none;
+    margin: 0;
+  }
+
+  div.highlighter-rouge pre.highlight,
+  figure.highlight pre {
+    padding: 1rem 1.15rem;
+  }
+
+  // Shell and plain-text blocks carry no syntax tokens, so they fall back to
+  // this. Body-text grey is too dim once it is set in mono at 0.845rem.
+  .highlight,
+  pre.highlight code {
+    color: #ccd5e3;
+  }
+}
+
+// Tables -------------------------------------------------------------------
+
+.main-content table {
+  display: table;
+  width: 100%;
+  margin: 1.6rem 0;
+  border: 1px solid var(--harness-border);
+  border-radius: 10px;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  box-shadow: none;
+  font-size: 0.925rem;
+
+  thead th {
+    background-color: var(--harness-surface-raised);
+    border-bottom: 1px solid var(--harness-border);
+    font-weight: 600;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--harness-muted);
+  }
+
+  td,
+  th {
+    border-bottom: 1px solid var(--harness-border);
+    padding: 0.7rem 0.95rem;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  tbody tr:nth-child(2n) {
+    background-color: rgba(255, 255, 255, 0.014);
+  }
+}
+
+// Blockquotes as asides ----------------------------------------------------
+
+.main-content blockquote {
+  margin: 1.5rem 0;
+  padding: 0.9rem 1.1rem;
+  border-left: 2px solid var(--harness-accent);
+  border-radius: 0 8px 8px 0;
+  background-color: rgba(61, 219, 192, 0.05);
+  color: #c2ccdc;
+
+  > :last-child {
+    margin-bottom: 0;
+  }
+}
+
+// Diagrams -----------------------------------------------------------------
+
+// The content column is narrower than a systems diagram wants to be, so let
+// diagrams use the width they need and scroll rather than shrink to nothing.
 .mermaid {
   overflow-x: auto;
-  margin: 1.5rem 0;
+  margin: 1.75rem 0;
+  padding: 1.25rem;
+  background-color: var(--harness-surface);
+  border: 1px solid var(--harness-border);
+  border-radius: 10px;
 
   svg {
-    min-width: 640px;
+    min-width: 660px;
     max-width: none;
     height: auto;
   }
 }
 
-// The ASCII sequence diagrams in the guide rely on alignment.
-pre.highlight {
-  line-height: 1.45;
+// Navigation ---------------------------------------------------------------
+
+.side-bar {
+  border-right: 1px solid var(--harness-border);
+}
+
+.site-header {
+  border-bottom: 1px solid var(--harness-border);
+  min-height: 3.75rem;
+}
+
+.site-title {
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.site-title:hover {
+  background-image: none;
+}
+
+.nav-list .nav-list-item {
+  font-size: 0.9rem;
+
+  .nav-list-link {
+    border-radius: 6px;
+    padding: 0.3rem 0.75rem;
+
+    &:hover {
+      background-image: none;
+      background-color: rgba(255, 255, 255, 0.04);
+    }
+
+    &.active {
+      background-image: none;
+      background-color: var(--harness-accent-dim);
+      color: var(--harness-accent);
+      font-weight: 550;
+    }
+  }
+}
+
+.main-header {
+  border-bottom: 1px solid var(--harness-border);
+}
+
+.aux-nav .site-button {
+  font-size: 0.82rem;
+  color: var(--harness-muted);
+
+  &:hover {
+    color: var(--harness-accent);
+    background-image: none;
+  }
+}
+
+// Search -------------------------------------------------------------------
+
+.search-input {
+  font-family: $font-stack;
+  font-size: 0.9rem;
+}
+
+.search-result:hover,
+.search-result.active {
+  background-color: var(--harness-accent-dim);
+}
+
+// Home page ----------------------------------------------------------------
+
+.hero {
+  padding: 1rem 0 0.5rem;
+
+  &__eyebrow {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--harness-accent);
+    background-color: var(--harness-accent-dim);
+    padding: 0.28rem 0.6rem;
+    border-radius: 999px;
+    margin-bottom: 1.4rem;
+  }
+
+  &__title {
+    font-size: 2.9rem;
+    line-height: 1.08;
+    letter-spacing: -0.032em;
+    font-weight: 700;
+    margin: 0 0 1.1rem;
+    color: #f3f7fc;
+  }
+
+  &__lede {
+    font-size: 1.2rem;
+    line-height: 1.55;
+    color: #c0cadb;
+    max-width: 34rem;
+    margin-bottom: 1.9rem;
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+    margin-bottom: 3rem;
+  }
+
+  &__btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.6rem 1.15rem;
+    border-radius: 8px;
+    font-size: 0.92rem;
+    font-weight: 550;
+    text-decoration: none;
+    border: 1px solid var(--harness-border);
+    background-color: var(--harness-surface-raised);
+    color: #dbe3ef;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+
+    &:hover {
+      background-image: none;
+      border-color: #2c3547;
+      background-color: #1c2331;
+      text-decoration: none;
+    }
+
+    &--primary {
+      background-color: var(--harness-accent);
+      border-color: var(--harness-accent);
+      color: #06231f;
+
+      &:hover {
+        background-color: #2fc9af;
+        border-color: #2fc9af;
+        color: #06231f;
+      }
+    }
+  }
+}
+
+// Feature grid -------------------------------------------------------------
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.85rem;
+  margin: 2rem 0 1rem;
+}
+
+.feature {
+  padding: 1.05rem 1.15rem;
+  background-color: var(--harness-surface);
+  border: 1px solid var(--harness-border);
+  border-radius: 10px;
+
+  h3 {
+    margin: 0 0 0.35rem;
+    font-size: 0.94rem;
+    font-weight: 600;
+    color: #e6ecf5;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.55;
+    color: var(--harness-muted);
+  }
+}
+
+// Responsive ---------------------------------------------------------------
+
+@media (max-width: 50rem) {
+  .hero__title {
+    font-size: 2.1rem;
+  }
+
+  .hero__lede {
+    font-size: 1.06rem;
+  }
+}
+
+// On-page contents ---------------------------------------------------------
+
+.main-content details {
+  margin: 1.75rem 0 2.5rem;
+  padding: 1rem 1.25rem;
+  background-color: var(--harness-surface);
+  border: 1px solid var(--harness-border);
+  border-radius: 10px;
+
+  summary {
+    cursor: pointer;
+    font-size: 0.76rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--harness-muted);
+    list-style: none;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    &::after {
+      content: "";
+      float: right;
+      font-size: 0.9rem;
+      line-height: 1;
+    }
+  }
+
+  &[open] summary::after {
+    content: "";
+  }
+
+  > ul {
+    margin: 0.9rem 0 0;
+    padding-left: 1.1rem;
+    columns: 2;
+    column-gap: 2rem;
+
+    li {
+      margin-bottom: 0.25rem;
+      font-size: 0.875rem;
+      break-inside: avoid;
+    }
+
+  }
+}
+
+@media (max-width: 50rem) {
+  .main-content details > ul {
+    columns: 1;
+  }
 }

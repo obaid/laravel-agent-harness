@@ -1,37 +1,23 @@
 ---
-layout: default
+layout: home
 title: Home
 nav_order: 0
 permalink: /
 ---
 
-# Laravel Agent Harness
-{: .fs-9 }
-
-Durable, observable agent runtimes for Laravel, powered by the official Laravel AI SDK.
-{: .fs-6 .fw-300 }
-
-[Get started](guide/){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
-[View on GitHub](https://github.com/obaid/laravel-agent-harness){: .btn .fs-5 .mb-4 .mb-md-0 }
-
----
+Laravel AI gives you the agent. This package gives you everything around it: sessions that outlive a request, runs you can queue and resume, an ordered event history you can replay, human approvals that survive a deploy, budgets, cancellation, and artifacts.
 
 ## The problem
 
-The Laravel AI SDK makes it simple to prompt an agent:
+Prompting an agent with Laravel AI is already easy.
 
 ```php
 $response = (new ResearchAgent)->prompt('Research our competitors.');
 ```
 
-That is the agent **engine**. But a production agent rarely fits inside one
-request and one response. The user closes the browser. A deploy restarts the
-worker. A publishing tool succeeds, then the worker dies before recording it.
-The agent pauses for approval and gets an answer hours later, in another
-process.
+That is the engine. The trouble starts when the work does not fit in one request. Someone closes the browser. A deploy restarts the worker. A publishing tool succeeds, then the process dies before recording that it did. The agent pauses for approval and gets an answer the next morning, from somewhere else entirely.
 
-Laravel AI does not try to be the durable runtime that owns that lifecycle.
-This package is.
+Laravel AI does not try to be the runtime that owns that lifecycle. This package is.
 
 ```php
 $session = Harness::agent(ResearchAgent::class)->for($user)->create();
@@ -39,37 +25,15 @@ $session = Harness::agent(ResearchAgent::class)->for($user)->create();
 $result = $session->prompt('Research our competitors and recommend a wedge.');
 ```
 
-Same shape. The difference is what survives it: the session, the run, every
-event in order, the usage, the artifacts, and the ability to pick all of it back
-up in another process tomorrow.
+The call has the same shape. What differs is what remains afterward: a session you can continue tomorrow, a run record with usage and cost, and every event in order.
 
----
+## What it handles
 
-## What you get
+Durable sessions keep context alive across a request, a worker, and a deploy. Every run leaves an append only history you can replay from any cursor, which is what makes a reconnecting browser cheap. Runs pause for human approval by releasing the worker entirely and picking back up when a decision lands, hours later if that is how long it takes.
 
-| | |
-|:--|:--|
-| **Durable sessions** | Context that outlives a request, a worker, and a deploy. |
-| **Ordered events** | An append-only account of every run, replayable from a cursor. |
-| **Human approval** | Runs that pause, release the worker, and resume when a decision lands. |
-| **Budgets** | Step, tool, token, cost and duration ceilings that carry across retries. |
-| **Cancellation** | Cooperative and durable, honest about what it cannot interrupt. |
-| **Artifacts** | Durable outputs with integrity hashes and authorized downloads. |
-| **Idempotent tools** | A ledger that stops a retry repeating a side effect. |
-| **Recovery** | Detection of lost workers, and retry as a new attempt. |
+Budgets cover steps, tool calls, tokens, cost, and duration, and they carry across retries so a failing loop cannot spend the same ceiling twice. Cancellation is cooperative and durable, and honest about the tools it cannot interrupt. Artifacts get integrity hashes and authorized downloads. A ledger keeps a retried tool from firing its side effect a second time. When a worker vanishes, the harness notices and retries the work as a new attempt rather than reopening a finished record.
 
----
-
-## Documentation
-
-- **[Guide](guide/)** — installation, the mental model, and every feature with examples.
-- **[Recipes](recipes/)** — complete slices: approval inboxes, live progress UIs, tenancy, spend caps.
-- **[Architecture](architecture/)** — runtime boundaries, state machines, storage, reliability, security.
-- **[Development](development/)** — repository layout, testing strategy, and how to add a driver.
-
----
-
-## Installation
+## Install
 
 ```bash
 composer require obaid/laravel-agent-harness
@@ -80,4 +44,4 @@ php artisan vendor:publish --provider="Laravel\Ai\AiServiceProvider"
 php artisan migrate
 ```
 
-Requires PHP 8.3+, Laravel 12 or 13, and `laravel/ai` 0.11+.
+Requires PHP 8.3 or newer, Laravel 12 or 13, and `laravel/ai` 0.11 or newer.

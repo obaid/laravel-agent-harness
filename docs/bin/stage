@@ -34,16 +34,32 @@ stage() {
 # a second copy that drifts.
 stage ../README.md guide 'Guide' 1
 
-# Its links point at docs/ for GitHub readers; on the site the pages are
-# siblings under /.
+# Two fixes for the site copy: the docs links under the title are circular
+# once you are already on the site, and links written for GitHub readers point
+# at docs/ rather than at sibling pages.
 sed -i.bak \
-    -e 's|](docs/ARCHITECTURE.md)|](/laravel-agent-harness/architecture/)|g' \
-    -e 's|](docs/DEVELOPMENT.md)|](/laravel-agent-harness/development/)|g' \
+    -e '/^\[Documentation\](https:\/\/obaid.github.io/d' \
     -e 's|](docs/RECIPES.md)|](/laravel-agent-harness/recipes/)|g' \
     pages/guide.md && rm -f pages/guide.md.bak
 
+# The guide is one long page, so give it an on-page contents list. Inserted
+# before the first h2 rather than written into the README, where GitHub already
+# renders its own outline.
+awk '
+    !done && /^## / {
+        print "<details open markdown=\"block\">"
+        print "<summary>On this page</summary>"
+        print ""
+        print "- TOC"
+        print "{:toc}"
+        print ""
+        print "</details>"
+        print ""
+        done = 1
+    }
+    { print }
+' pages/guide.md > pages/guide.tmp && mv pages/guide.tmp pages/guide.md
+
 stage RECIPES.md recipes 'Recipes' 2
-stage ARCHITECTURE.md architecture 'Architecture' 3
-stage DEVELOPMENT.md development 'Development' 4
 
 echo "Staged: $(ls pages)"

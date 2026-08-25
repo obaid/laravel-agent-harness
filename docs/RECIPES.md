@@ -1,6 +1,6 @@
 # Recipes
 
-End-to-end examples. Each one is a complete slice you can lift into an application, and each builds on ordinary [Laravel AI](https://laravel.com/docs/ai) agents and tools.
+Complete examples you can lift into an application. Each one builds on ordinary [Laravel AI](https://laravel.com/docs/ai) agents and tools.
 
 - [1. A research agent with an approval inbox](#1-a-research-agent-with-an-approval-inbox)
 - [2. A live progress UI that survives a refresh](#2-a-live-progress-ui-that-survives-a-refresh)
@@ -15,7 +15,7 @@ End-to-end examples. Each one is a complete slice you can lift into an applicati
 
 ## 1. A research agent with an approval inbox
 
-The scenario: an agent researches competitors and drafts a blog post. Publishing is irreversible, so a human signs off — possibly the next morning, from a different device.
+An agent researches competitors and drafts a blog post. Publishing is irreversible, so a human signs off first, possibly the next morning from a different device.
 
 ### The agent
 
@@ -96,8 +96,8 @@ class PublishArticle implements Approvable, IdempotentTool, SensitiveTool, Tool
 
     public function idempotencyKey(ToolInvocation $invocation): string
     {
-        // Key the side effect, not the call: two retries of "publish 42" must
-        // collide, even though their tool-call IDs differ.
+        // Key the side effect, not the call. Two retries of "publish 42" have
+        // to collide even though their tool-call IDs differ.
         return "publish-article:{$invocation->arguments['article_id']}";
     }
 
@@ -131,7 +131,7 @@ Route::post('/content/research', function (Request $request) {
 });
 ```
 
-The HTTP request returns immediately. A queue worker picks the run up, the agent researches, drafts, and reaches `publish_article` — at which point the run pauses, a checkpoint is written, and **the worker exits normally**. Nothing is held open waiting for a human.
+The HTTP request returns immediately. A queue worker picks the run up, and the agent researches, drafts, and reaches `publish_article`. At that point the run pauses, a checkpoint is written, and the worker exits normally. Nothing is held open waiting for a human.
 
 ### Notifying the approver
 
@@ -174,7 +174,7 @@ Route::get('/approvals', function (Request $request) {
 @endforeach
 ```
 
-The bundled endpoints already authorize by participant, resolve idempotently, and re-queue the run once every decision is in. If you would rather own the surface, do it yourself:
+The bundled endpoints authorize by participant, resolve idempotently, and re-queue the run once every decision is in. If you would rather own that surface:
 
 ```php
 Route::post('/approvals/{approval}', function (Request $request, string $approvalId) {
@@ -191,13 +191,13 @@ Route::post('/approvals/{approval}', function (Request $request, string $approva
 });
 ```
 
-**What you get for free:** the decision survives a deploy, a double-click cannot publish twice, reversing a decision raises instead of silently winning, and the approver and their reason are in the audit history.
+What that buys you: the decision survives a deploy, a double click cannot publish twice, reversing a decision raises instead of silently winning, and the approver and their reason both end up in the audit history.
 
 ---
 
 ## 2. A live progress UI that survives a refresh
 
-The scenario: a long run, a progress bar, and a user who refreshes the page halfway through.
+A long run, a progress bar, and a user who refreshes the page halfway through.
 
 ### Server
 
@@ -265,7 +265,7 @@ follow(runId, (event) => {
 })
 ```
 
-Refresh the page and the stream picks up at the stored cursor with no gap and no repeat. Close the laptop for an hour and it still works, because the events are rows, not a socket.
+Refresh the page and the stream picks up at the stored cursor without a gap or a repeat. Close the laptop for an hour and it still works, because the events are rows in a table rather than a socket.
 
 ### Already using the Vercel AI SDK?
 
@@ -280,13 +280,13 @@ Route::post('/chat', function (Request $request) {
 });
 ```
 
-You still get the full durable event history behind it — the protocol is a view over the same recorded events, not a separate path.
+The full durable event history is still behind it. The protocol is a view over the same recorded events rather than a separate path.
 
 ---
 
 ## 3. Multi-tenant agents
 
-Scope every session to a team, and the harness enforces it on every lookup, route, and broadcast channel:
+Scope a session to a team and the harness enforces it on every lookup, route, and broadcast channel:
 
 ```php
 $session = Harness::agent(SupportAgent::class)
@@ -307,14 +307,14 @@ $teamSessions = Session::query()
     ->get();
 ```
 
-Every packaged route authorizes against the session's participant, so a run belonging to another user is not merely hidden from a list — it is unreachable. Broadcast channels authorize the same way:
+Every packaged route authorizes against the session's participant, so a run belonging to another user is unreachable rather than merely hidden from a list. Broadcast channels authorize the same way:
 
 ```php
 // Registered for you when broadcasting is on.
 Broadcast::channel('agent-harness.run.{runId}', fn ($user, $runId) => /* participant check */);
 ```
 
-Tenant-scoped agents usually want tenant-scoped tools. The ambient run context carries the scope without you threading it through constructors:
+Tenant scoped agents usually want tenant scoped tools. The ambient run context carries the scope so you do not have to thread it through constructors:
 
 ```php
 use AgentHarness\Laravel\Runtime\RunContext;
@@ -344,7 +344,7 @@ Tell the harness what your models cost:
 ],
 ```
 
-Then budget by plan:
+Then set a budget per plan:
 
 ```php
 use AgentHarness\Laravel\ValueObjects\RunBudget;
@@ -361,7 +361,7 @@ $session = Harness::agent(ResearchAgent::class)
     ->create();
 ```
 
-A run that hits the ceiling stops at `budget_exceeded` with an event naming the limit that ran out:
+A run that hits the ceiling stops at `budget_exceeded`, with an event naming the limit that ran out:
 
 ```json
 {
@@ -392,21 +392,21 @@ Event::listen(HarnessEventRecorded::class, function ($event) {
 });
 ```
 
-Because usage carries across attempts, a run that fails and retries three times cannot spend the cap three times.
+Usage carries across attempts, so a run that fails and retries three times cannot spend the cap three times.
 
 ---
 
 ## 5. A tool that must never double-charge
 
-The hardest failure to reason about: the tool succeeded, then the worker died before recording it.
+This is the failure that is hardest to reason about. The tool succeeded, and then the worker died before recording that it had.
 
 ```php
 class ChargeCustomer implements IdempotentTool, SensitiveTool, Tool
 {
     public function idempotencyKey(ToolInvocation $invocation): string
     {
-        // The run ID scopes it to this piece of work; the invoice ID makes two
-        // charges for the same invoice collide even across retries.
+        // The run ID scopes it to this piece of work. The invoice ID makes two
+        // charges for the same invoice collide, even across retries.
         return "charge:{$invocation->runId}:{$invocation->arguments['invoice_id']}";
     }
 
@@ -419,9 +419,9 @@ class ChargeCustomer implements IdempotentTool, SensitiveTool, Tool
     {
         $invoice = Invoice::findOrFail($request['invoice_id']);
 
-        // Pass the key through to the payment provider too. Belt and braces:
-        // the ledger protects you inside the harness, this protects you if the
-        // request itself is what got retried.
+        // Pass the key to the payment provider as well. The ledger protects
+        // you inside the harness, and this protects you if the HTTP request
+        // itself is what got retried.
         $charge = Stripe::charge($invoice, idempotencyKey: $this->keyFor($invoice));
 
         return "Charged {$invoice->formattedTotal()} ({$charge->id}).";
@@ -429,7 +429,7 @@ class ChargeCustomer implements IdempotentTool, SensitiveTool, Tool
 }
 ```
 
-The harness writes the key and a `pending` row **before** calling `handle()`, then updates it to `completed` with the result afterwards. A retry finds the completed row and returns the stored result without calling `handle()` again.
+The harness writes the key and a `pending` row before calling `handle()`, then updates it to `completed` with the result afterwards. A retry finds the completed row and returns the stored result without calling `handle()` again.
 
 Inspect the ledger like any other table:
 
@@ -443,7 +443,7 @@ ToolExecution::query()
     ->get();
 ```
 
-**A tool with no idempotency contract is recorded for audit, but the harness makes no duplicate-suppression claim on its behalf.** It cannot safely make one — only you know what "the same action" means for your side effect.
+A tool with no idempotency contract still gets recorded for audit, but the harness makes no duplicate suppression claim for it. Only you know what counts as the same action for your side effect.
 
 ---
 
@@ -467,7 +467,7 @@ Schedule::call(function () {
 })->weeklyOn(1, '06:00');
 ```
 
-Have the agent's tool attach the PDF:
+Have the tool attach the PDF:
 
 ```php
 use AgentHarness\Laravel\Artifacts\Artifact;
@@ -497,7 +497,7 @@ Route::get('/reports/{artifact}', function (Request $request, string $artifactId
 });
 ```
 
-Keep the schedule healthy — these are registered for you, but worth knowing they exist:
+These are registered for you, but they are worth knowing about:
 
 ```
 agent-harness:reap               every five minutes   recovers runs whose worker vanished
@@ -550,7 +550,7 @@ Run::query()
     ->map(fn (Run $run) => $run->structured_output['score'] ?? null);
 ```
 
-> Structured agents take Laravel AI's buffered prompt path, because that is where validated structured output is produced. Events are synthesized from the completed response rather than streamed token by token.
+> Structured agents use Laravel AI's buffered prompt path, since that is where validated structured output comes from. Events are synthesized from the completed response rather than streamed token by token.
 
 ---
 
@@ -615,11 +615,11 @@ it('publishes once the approval lands, and only once', function () {
 });
 ```
 
-`Harness::fake()` swaps in a deterministic driver and runs queued work inline. Everything else is real: the coordinator, the state machine, the event store, approvals, artifacts, the ledger, and the HTTP routes. You are testing your application against the actual runtime, minus the provider.
+`Harness::fake()` swaps in a deterministic driver and runs queued work inline. Everything else stays real: the coordinator, the state machine, the event store, approvals, artifacts, the ledger, and the HTTP routes. You are testing against the actual runtime with the provider removed.
 
 ### Testing against real Laravel AI
 
-To exercise the real driver, fake the *agent* instead of the harness — Laravel AI's own fake gateway:
+To exercise the real driver, fake the agent instead of the harness using Laravel AI's own fake gateway:
 
 ```php
 it('runs the real driver', function () {
@@ -632,4 +632,4 @@ it('runs the real driver', function () {
 });
 ```
 
-This is the more faithful test: real event translation, real conversation persistence, real approval mapping — only the model call is faked.
+This is the more faithful test. Event translation, conversation persistence, and approval mapping are all real, and only the model call is faked.

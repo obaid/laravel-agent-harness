@@ -12,6 +12,7 @@ Thumbs.db
 
 # Generated when the docs site is built.
 /docs/pages
+/docs/vendor
 /docs/_site
 /docs/.jekyll-cache
 /docs/Gemfile.lock
