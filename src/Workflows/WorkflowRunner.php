@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Clutch\Laravel\Workflows;
 
 use Clutch\Laravel\Approvals\ApprovalBroker;
+use Clutch\Laravel\Enums\ApprovalStatus;
 use Clutch\Laravel\Enums\PermissionMode;
 use Clutch\Laravel\Enums\RunStatus;
 use Clutch\Laravel\Exceptions\RunNotFound;
@@ -123,7 +124,7 @@ final class WorkflowRunner
             $this->approvals->resolve(
                 $run,
                 $approval->id,
-                $approved ? \Clutch\Laravel\Enums\ApprovalStatus::Approved : \Clutch\Laravel\Enums\ApprovalStatus::Rejected,
+                $approved ? ApprovalStatus::Approved : ApprovalStatus::Rejected,
                 $reason,
                 null,
                 $input,

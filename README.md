@@ -656,6 +656,25 @@ reused, so a second prompt continues the same conversation. Those sessions
 record the workflow that caused them, which is what lets you trace an agent's
 run back to the job it belonged to.
 
+### When the agent itself needs approval
+
+An agent prompted from a workflow can hit an approvable tool of its own. The
+workflow does not carry on: the agent has not done the work yet, so the pause
+travels outward and the workflow's run parks with the agent's real tool call
+shown on it.
+
+The step it happened inside is deliberately not recorded, which is the part
+that matters. Recording it would treat a prompt the agent never finished as a
+finished one, and no later resume would go back for it.
+
+```php
+Workflow::resume($run->id, ['approved' => true]);
+```
+
+That decision reaches the agent, its run continues from where it stopped, and
+the workflow carries on with the real result. A rejection travels the same way
+and comes back to the agent as a tool result, so the run finishes either way.
+
 ### Files and outputs
 
 Stage inputs before any work begins, and declare what you expect to come out:

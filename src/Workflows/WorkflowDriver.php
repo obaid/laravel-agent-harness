@@ -140,7 +140,7 @@ final class WorkflowDriver implements ClutchDriver
             state: $state,
             events: $events,
             cancellation: $cancellation,
-            persist: function (WorkflowState $state) use ($session, $events): void {
+            persist: $persist = function (WorkflowState $state) use ($session, $events): void {
                 $events->checkpoint(new DriverCheckpoint(
                     $this->name(),
                     self::SCHEMA_VERSION,
@@ -166,6 +166,8 @@ final class WorkflowDriver implements ClutchDriver
                 'why' => $paused->why,
             ];
 
+            $persist($state);
+
             $events->emitRaw('workflow.paused', [
                 'workflow' => $class,
                 'pause' => $paused->name,
@@ -182,12 +184,55 @@ final class WorkflowDriver implements ClutchDriver
                 text: $paused->why,
                 session: $session->withState($state->toArray()),
             );
+        } catch (AgentPaused $paused) {
+            // The agent stopped, so the workflow stops with it, showing the
+            // real tool call rather than a pause the workflow invented.
+            $state->pause = [
+                'name' => $this->agents->pauseKey($paused->agentClass),
+                'agent' => $paused->agentClass,
+                'agent_run_id' => $paused->agentRunId,
+            ];
+
+            $persist($state);
+
+            $events->emitRaw('workflow.agent_paused', [
+                'workflow' => $class,
+                'agent' => $paused->agentClass,
+                'agent_run_id' => $paused->agentRunId,
+                'step' => $runtime->currentStep(),
+            ]);
+
+            return TurnResult::awaitingApproval(
+                array_map(
+                    fn (PendingApproval $approval): PendingApproval => new PendingApproval(
+                        // Named for the agent, so the decision that resolves
+                        // this reaches it on the next pass.
+                        toolCallId: $approval->toolCallId,
+                        toolName: $this->agents->pauseKey($paused->agentClass),
+                        arguments: [
+                            'tool' => $approval->toolName,
+                            'arguments' => $approval->arguments,
+                            'agent' => class_basename($paused->agentClass),
+                        ],
+                        reason: $approval->reason,
+                    ),
+                    $paused->approvals,
+                ),
+                text: sprintf('%s is waiting for approval.', class_basename($paused->agentClass)),
+                session: $session->withState($state->toArray()),
+            );
         } catch (WorkflowCancelled $cancelled) {
+            $persist($state);
+
             return TurnResult::cancelled(
                 $cancelled->why,
                 session: $session->withState($state->toArray()),
             );
         } catch (Throwable $e) {
+            // Persisted before the failure is reported, so a retry keeps the
+            // steps that had already finished.
+            $persist($state);
+
             $failure = new WorkflowFailed($class, $runtime->currentStep(), $e);
 
             $events->emitRaw('workflow.failed', [

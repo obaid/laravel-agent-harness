@@ -171,3 +171,31 @@ it('generates a workflow that already uses a step', function (): void {
         ->toContain('extends Workflow')
         ->toContain("\$this->step('first'");
 });
+
+it('keeps step results across a killed worker and a reap', function (): void {
+    $run = CountingWorkflow::start()->for($this->owner)->dispatch(['name' => 'ada']);
+
+    // The run parked for sign-off. Simulate the worker vanishing mid-flight by
+    // dropping it back to running with a stale heartbeat, which is exactly the
+    // shape the reaper looks for.
+    $run->refresh()->forceFill([
+        'status' => RunStatus::Running,
+        'heartbeat_at' => now()->subHour(),
+    ])->save();
+
+    app(\Clutch\Laravel\Jobs\ReapAbandonedRuns::class)->handle(
+        app(\Clutch\Laravel\Runtime\RunCoordinator::class),
+        app(\Clutch\Laravel\Leases\LeaseManager::class),
+        app('log'),
+    );
+
+    // Whatever the reaper decided, the step that finished must still be on
+    // record, or recovery would pay for it a second time.
+    $checkpoint = \Clutch\Laravel\Models\Checkpoint::query()
+        ->where('session_id', $run->session_id)
+        ->latest('id')
+        ->firstOrFail();
+
+    expect($checkpoint->payload['steps'])->toHaveKey('first')
+        ->and($checkpoint->payload['steps']['first']['value'])->toBe('ADA');
+});

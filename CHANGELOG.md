@@ -5,6 +5,37 @@ Notable changes to `obaid/laravel-clutch`.
 This project follows [Semantic Versioning](https://semver.org). Before v1.0, a
 breaking change needs a changelog entry and an upgrade note.
 
+## v0.3.1 - 2026-08-25
+
+Fixes found by building a real workflow against the published package, which
+is the same exercise that caught the three criticals before v0.2.0.
+
+**An agent that paused inside a workflow step was ignored.** The workflow
+carried on as though the prompt had returned, recorded the step as finished,
+and left the agent's approval pending forever with nothing that would ever
+resolve it. The pause now travels outward: the workflow's run parks showing the
+agent's real tool call, the step is left unrecorded, and resuming delivers the
+decision to the agent so its run continues from where it stopped. A rejection
+travels the same way rather than stranding the run.
+
+**Workflow state was not persisted when a run parked or failed.** Only a
+completed step wrote a checkpoint, so a pause lost the record of which agent
+sessions already existed, and a resume created a second one while the first sat
+waiting. State is now persisted on every non-completed exit, which also means a
+retry after a failure keeps the steps that had finished.
+
+**A failing concurrent step discarded its siblings' results.** `steps()` only
+recorded once the whole group had returned, so one failure threw away work that
+had succeeded, contrary to what the guide promised. Failures are now collected
+per step, the successes are recorded and persisted, and the first failure is
+raised afterwards.
+
+**The workflow driver did not resolve from a published config.** An application
+that published `clutch.php` before v0.3.0 upgraded into a `DriverNotFound`.
+Workflows are a built-in runtime rather than a provider to choose between, so
+they are now registered in code and no longer depend on the user's config file
+being current.
+
 ## v0.3.0 - 2026-08-25
 
 Adds workflows.

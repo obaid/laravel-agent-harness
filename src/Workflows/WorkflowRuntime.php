@@ -137,8 +137,25 @@ final class WorkflowRuntime
                 ]);
             }
 
-            foreach ($this->resolveConcurrently($outstanding) as $name => $value) {
-                $this->state->recordStep($name, $value);
+            $failure = null;
+
+            foreach ($this->resolveConcurrently($outstanding) as $name => $outcome) {
+                if ($outcome instanceof Throwable) {
+                    // Keep the first failure, but let the siblings that
+                    // succeeded be recorded before it is raised.
+                    $failure ??= $outcome;
+
+                    $this->events->emit(EventType::StepCompleted, [
+                        'step' => $name,
+                        'workflow' => $this->state->workflow,
+                        'failed' => true,
+                        'concurrent' => true,
+                    ]);
+
+                    continue;
+                }
+
+                $this->state->recordStep($name, $outcome);
 
                 $this->events->emit(EventType::StepCompleted, [
                     'step' => $name,
@@ -148,7 +165,13 @@ final class WorkflowRuntime
                 ]);
             }
 
+            // Persisted before rethrowing, so a resume re-runs only the steps
+            // that are still missing rather than the whole group.
             ($this->persist)($this->state);
+
+            if ($failure instanceof Throwable) {
+                throw $failure;
+            }
         }
 
         $results = [];
@@ -161,24 +184,39 @@ final class WorkflowRuntime
     }
 
     /**
+     * Run the outstanding work, returning each result or the throwable it
+     * raised. Failures are values here rather than exceptions so that one
+     * task falling over cannot discard what its siblings returned.
+     *
      * @param  array<string, Closure>  $work
      * @return array<string, mixed>
      */
     protected function resolveConcurrently(array $work): array
     {
+        $captured = array_map(
+            static fn (Closure $task): Closure => static function () use ($task): mixed {
+                try {
+                    return $task();
+                } catch (Throwable $e) {
+                    return $e;
+                }
+            },
+            $work,
+        );
+
         if (! (bool) config('clutch.workflows.concurrent_steps', true)) {
-            return array_map(static fn (Closure $task): mixed => $task(), $work);
+            return array_map(static fn (Closure $task): mixed => $task(), $captured);
         }
 
         try {
             /** @var array<string, mixed> $resolved */
-            $resolved = Concurrency::run($work);
+            $resolved = Concurrency::run($captured);
 
             return $resolved;
         } catch (Throwable) {
             // A forked driver cannot always serialise what the closure closes
             // over. Falling back keeps the workflow correct, just slower.
-            return array_map(static fn (Closure $task): mixed => $task(), $work);
+            return array_map(static fn (Closure $task): mixed => $task(), $captured);
         }
     }
 
