@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Clutch\Laravel\Drivers\LaravelAiDriver;
+use Clutch\Laravel\Drivers\LaravelAi\LaravelAiDriver;
 use Clutch\Laravel\Enums\PermissionMode;
 
 return [

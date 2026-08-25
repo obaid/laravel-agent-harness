@@ -72,14 +72,14 @@ abstract class TestCase extends Orchestra
         $app['config']->set('clutch.events.broadcast', false);
         $app['config']->set('clutch.default_driver', 'fake');
 
-        // mergeConfigFrom is a shallow merge, so the whole drivers map has to
-        // be declared here rather than only the key being added.
+        // Add the fake driver to whatever the package actually ships, rather
+        // than replacing the map. Overwriting it once hid a wrong class name in
+        // the published config through an entire release, so the shipped entries
+        // now stay in play for every test.
         $app['config']->set('clutch.drivers', [
+            ...(array) $app['config']->get('clutch.drivers', []),
             'fake' => [
                 'driver' => \Clutch\Laravel\Drivers\FakeDriver::class,
-            ],
-            'laravel-ai' => [
-                'driver' => \Clutch\Laravel\Drivers\LaravelAi\LaravelAiDriver::class,
             ],
         ]);
 

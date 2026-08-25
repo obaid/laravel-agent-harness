@@ -25,7 +25,13 @@ class DriverRegistry
     protected array $customCreators = [];
 
     /**
-     * @param  array<string, array{driver: class-string<ClutchDriver>}|class-string<ClutchDriver>>  $config
+     * Driver configuration, exactly as it comes off disk.
+     *
+     * Typed loosely on purpose: this is a file a user edits, so it cannot be
+     * promised to hold a class-string. `resolve()` is what turns it into one,
+     * and says clearly what is wrong when it cannot.
+     *
+     * @param  array<string, mixed>  $config
      */
     public function __construct(
         protected Container $container,
@@ -119,10 +125,19 @@ class DriverRegistry
 
         $config = $this->config[$name] ?? null;
 
-        $class = is_array($config) ? $config['driver'] : $config;
+        $class = is_array($config) ? ($config['driver'] ?? null) : $config;
 
-        if (! is_string($class) || ! class_exists($class)) {
+        if (! is_string($class)) {
             throw DriverNotFound::named($name);
+        }
+
+        // Config is written by hand, so a typo here is likely and deserves a
+        // message that names the class rather than just the driver.
+        if (! class_exists($class)) {
+            throw new DriverNotFound(
+                "The driver [{$name}] is configured as [{$class}], which does not exist. ".
+                'Check the class name in config/clutch.php.'
+            );
         }
 
         $driver = $this->container->make($class, is_array($config) ? ['config' => $config] : []);

@@ -5,6 +5,22 @@ Notable changes to `obaid/laravel-clutch`.
 This project follows [Semantic Versioning](https://semver.org). Before v1.0, a
 breaking change needs a changelog entry and an upgrade note.
 
+## v0.1.1 - 2026-08-25
+
+Fixes a bug that made the bundled driver unusable from the published config.
+
+`config/clutch.php` imported `Clutch\Laravel\Drivers\LaravelAiDriver`, which
+does not exist: the class is `Clutch\Laravel\Drivers\LaravelAi\LaravelAiDriver`.
+Any application that used the default driver hit "No driver is registered under
+the name [laravel-ai]" on its first run.
+
+The test suite missed it because it replaced `clutch.drivers` wholesale with its
+own map, so the shipped file was never loaded. Tests now extend the shipped
+config instead of overwriting it, and a new suite loads the published file
+directly and checks that every class it names exists and implements the driver
+contract. A misconfigured driver now also names the offending class in the
+error rather than only the driver.
+
 ## v0.1.0 - 2026-08-24
 
 First release: a durable runtime around Laravel AI agents.
