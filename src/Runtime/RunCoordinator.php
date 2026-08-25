@@ -881,6 +881,14 @@ class RunCoordinator
                 $recorded = $this->events->append($run, $event, $payload);
             }
 
+            // A finished run cannot have anything outstanding to decide.
+            // Enforced here rather than in each finalizer, because a caller
+            // that transitions a run directly, as the reaper does, would
+            // otherwise leave approvals pending on a run nobody can resume.
+            if ($to->isTerminal()) {
+                $this->approvals->cancelPending($run);
+            }
+
             // Freeing the session's active slot happens in the same transaction
             // as the terminal write, so the slot is never observably occupied
             // by a finished run.

@@ -258,3 +258,31 @@ it('14. never lets a blocked tool call reach the tool', function (): void {
     // effect run and discarding its result.
     expect($sideEffects)->toBe(1);
 });
+
+it('leaves no approval pending on a run that has finished', function (): void {
+    $this->clutch->script([
+        ClutchResult::awaitingApproval(tool: 'publish_article', arguments: ['article_id' => 1]),
+    ]);
+
+    $session = Clutch::agent(
+        \Clutch\Laravel\Tests\Fixtures\Agents\PublishingAgent::class
+    )->for($this->owner)->create();
+
+    $result = $session->prompt('Publish it.');
+
+    expect(Approval::query()->where('status', 'pending')->count())->toBe(1);
+
+    // The reaper transitions a run straight to failed rather than going
+    // through a finalizer, which is exactly the path that used to strand an
+    // approval where nothing could ever resolve it.
+    $result->run->forceFill([
+        'status' => RunStatus::Running,
+        'heartbeat_at' => now()->subHour(),
+        'started_at' => now()->subHour(),
+    ])->save();
+
+    dispatch_sync(new \Clutch\Laravel\Jobs\ReapAbandonedRuns(staleAfterSeconds: 60, retry: false));
+
+    expect($result->run->refresh()->status->isTerminal())->toBeTrue()
+        ->and(Approval::query()->where('status', 'pending')->count())->toBe(0);
+});

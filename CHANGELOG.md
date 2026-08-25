@@ -5,6 +5,18 @@ Notable changes to `obaid/laravel-clutch`.
 This project follows [Semantic Versioning](https://semver.org). Before v1.0, a
 breaking change needs a changelog entry and an upgrade note.
 
+## v0.3.2 - 2026-08-25
+
+**A reaped run left its approvals pending forever.** The reaper transitions a
+run straight to failed rather than going through a finalizer, so the
+`cancelPending` that every finalizer calls never happened. An approval inbox
+would keep showing an item for a run nobody could ever resume.
+
+Cancelling pending approvals now happens inside `transitionRun` whenever a run
+reaches a terminal state, so it holds for every caller rather than for the ones
+that remembered. A finished run has nothing outstanding to decide, and that is
+now an invariant with a test rather than a convention.
+
 ## v0.3.1 - 2026-08-25
 
 Fixes found by building a real workflow against the published package, which
