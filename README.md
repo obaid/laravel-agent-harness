@@ -1046,13 +1046,11 @@ Every screen is something that would go wrong in a naive build. Close the tab an
 
 Five of its seven tools never ask permission, which is the part worth copying. Approval is for the two things you cannot take back.
 
-## Used by
+## Created by teams from
 
 - [ONE](https://osone.ai)
 - [Provision AI](https://provision.ai)
 - [CrewX](https://crewx.ai)
-
-Using it somewhere? Open a pull request and add yourself.
 
 ## Documentation
 
