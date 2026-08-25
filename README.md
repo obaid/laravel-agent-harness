@@ -1,5 +1,10 @@
 # Laravel Clutch
 
+[![Latest version](https://img.shields.io/packagist/v/obaid/laravel-clutch.svg?style=flat-square)](https://packagist.org/packages/obaid/laravel-clutch)
+[![Tests](https://img.shields.io/github/actions/workflow/status/obaid/laravel-clutch/tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/obaid/laravel-clutch/actions/workflows/tests.yml)
+[![Downloads](https://img.shields.io/packagist/dt/obaid/laravel-clutch.svg?style=flat-square)](https://packagist.org/packages/obaid/laravel-clutch)
+[![License](https://img.shields.io/packagist/l/obaid/laravel-clutch.svg?style=flat-square)](LICENSE.md)
+
 Durable, observable agent runtimes for Laravel, built on the official [Laravel AI SDK](https://laravel.com/docs/ai).
 
 [Documentation](https://obaid.github.io/laravel-clutch/) · [Recipes](https://obaid.github.io/laravel-clutch/recipes/)
