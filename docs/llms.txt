@@ -1,0 +1,33 @@
+# Laravel Clutch
+
+> An agent harness for Laravel. It wraps the official laravel/ai SDK and owns everything around the model call: sessions that outlive a request, runs you can queue and resume, an append-only event history you can replay, human approvals that survive a deploy, budgets, cancellation, and artifacts.
+
+Clutch does not talk to model providers and is not another agent framework. Laravel AI runs the agent, the tool loop, and the conversation. Clutch decides when a turn starts, what gets recorded, who may approve what, when to stop, and how to pick the work back up in another process.
+
+Requirements: PHP 8.3+, Laravel 12 or 13, laravel/ai 0.11.x. PostgreSQL and Redis in production; SQLite is fine for tests.
+
+Install: `composer require obaid/laravel-clutch`, then publish migrations for both `Clutch\Laravel\ClutchServiceProvider` and `Laravel\Ai\AiServiceProvider` and run them. Laravel AI's conversation tables are required, not optional.
+
+Two things are easy to get wrong and both fail quietly:
+
+- An agent must use `Laravel\Ai\Concerns\RemembersConversations` and implement the matching contract, or a session cannot be created.
+- Tools must be returned through `Clutch::policy([...])`. Laravel AI runs tools inside its own loop, so that wrapper is the only place approvals, the idempotency ledger, loop guards, tool deadlines and output spilling can sit. An agent returning tools directly gets none of them, with no error.
+
+## Docs
+
+- [Guide](https://obaid.github.io/laravel-clutch/guide/): the complete reference. Installation, the five-noun mental model, sessions and runs, background runs, streaming and reconnection, human approval and permission modes, budgets, cancellation, artifacts, idempotent tools, the event envelope and redaction, drivers, testing, and configuration.
+- [Recipes](https://obaid.github.io/laravel-clutch/recipes/): eight complete examples. An approval inbox, a live progress UI that survives a refresh, multi-tenant scoping, per-plan spend caps, a tool that must never double-charge, nightly batch runs, structured output, and testing.
+- [Set it up with an agent](https://obaid.github.io/laravel-clutch/agents/): copy-paste prompts for installing and wiring up the package, plus the mistakes worth checking for afterwards.
+
+## Reference
+
+- [API surface](https://obaid.github.io/laravel-clutch/guide/#getting-started): `Clutch::agent()`, `Clutch::session()`, `Clutch::run()`, `Clutch::policy()`, `Clutch::pendingApprovalsFor()`.
+- [Permission modes](https://obaid.github.io/laravel-clutch/guide/#permission-modes): `DenyByDefault`, `ApproveSensitive`, `ApproveAll`, `AllowAll`.
+- [Configuration](https://obaid.github.io/laravel-clutch/guide/#configuration): `config/clutch.php`, covering drivers, queue, permissions, approvals, events, streaming, skills, spill, guards, compaction, artifacts, leases, budgets, limits, pricing, retention, recovery, and routes.
+- [What it guarantees](https://obaid.github.io/laravel-clutch/guide/#what-it-guarantees): the invariants it holds, and what it explicitly does not promise.
+- [Source](https://github.com/obaid/laravel-clutch) and [Packagist](https://packagist.org/packages/obaid/laravel-clutch).
+
+## Optional
+
+- [Full documentation as one file](https://obaid.github.io/laravel-clutch/llms-full.txt): the guide and every recipe concatenated, for reading in one pass.
+- [Example application](https://github.com/obaid/laravel-clutch-demo): a mock CRM with an assistant panel, queued runs, inline approvals, and idempotent tools. Real working code against the published package.

@@ -29,6 +29,9 @@ kramdown:
 color_scheme: harness
 search_enabled: true
 
+# The setup prompts exist to be copied, so give every code block a copy button.
+enable_copy_code_button: true
+
 search:
   heading_level: 3
   previews: 2
@@ -58,6 +61,7 @@ exclude:
   - Gemfile.lock
   - vendor
   - bin
-  # The pristine source. bin/stage produces the copy under pages/ that Jekyll
-  # actually renders, so this would otherwise be published twice.
+  # The pristine sources. bin/stage produces the copies under pages/ that Jekyll
+  # actually renders, so these would otherwise be published twice.
   - RECIPES.md
+  - AGENT-SETUP.md

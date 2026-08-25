@@ -61,5 +61,22 @@ awk '
 ' pages/guide.md > pages/guide.tmp && mv pages/guide.tmp pages/guide.md
 
 stage RECIPES.md recipes 'Recipes' 2
+stage AGENT-SETUP.md agents 'Set it up with an agent' 3
 
-echo "Staged: $(ls pages)"
+# One plain-text file holding everything, for agents that would rather read the
+# whole thing in one request than crawl three pages. Built from the same
+# sources, so it cannot drift from the site.
+rule=$(printf -- '-%.0s' {1..76})
+
+{
+    printf -- '# Laravel Clutch\n\n'
+    printf -- 'The complete documentation as one file: the guide, then the recipes.\n'
+    printf -- 'Source: https://github.com/obaid/laravel-clutch\n'
+    printf -- 'Short index for agents: https://obaid.github.io/laravel-clutch/llms.txt\n\n'
+    printf -- '%s\n\n' "$rule"
+    cat ../README.md
+    printf -- '\n\n%s\n\n' "$rule"
+    cat RECIPES.md
+} > llms-full.txt
+
+echo "Staged: $(ls pages) llms-full.txt"

@@ -7,7 +7,7 @@
 
 An agent harness for Laravel, built on the official [Laravel AI SDK](https://laravel.com/docs/ai).
 
-[Documentation](https://obaid.github.io/laravel-clutch/) · [Recipes](https://obaid.github.io/laravel-clutch/recipes/)
+[Documentation](https://obaid.github.io/laravel-clutch/) · [Recipes](https://obaid.github.io/laravel-clutch/recipes/) · [Set it up with an agent](https://obaid.github.io/laravel-clutch/agents/)
 
 Laravel AI gives you the agent. Clutch is the harness around it: sessions that outlive a request, runs you can queue and resume, an ordered event history you can replay, human approvals that survive a deploy, budgets, cancellation, and artifacts.
 
@@ -125,6 +125,33 @@ Durability comes from a few unglamorous rules. The queue job is dispatched only 
 ```
 
 If the agent hits a tool that needs approval, the middle of that sequence ends at `run.awaiting_approval`, the worker exits, and everything resumes from the checkpoint once a decision arrives.
+
+## DR;SA
+
+Didn't read, sent to agent. Paste this into Claude Code, Codex, Cursor, or whatever you use, and let it install and wire up the package for you.
+
+```text
+Add Laravel Clutch to this application. It is a durable agent harness for
+Laravel that wraps the official laravel/ai SDK rather than replacing it.
+
+Read https://obaid.github.io/laravel-clutch/llms.txt first and follow the guide
+it links to. Do not guess at the API surface.
+
+Install it, publish and run the migrations for BOTH Clutch and Laravel AI, put
+agent work on its own queue, and move the agent in this codebase that most
+needs to outlive a request onto a Clutch session.
+
+Two things fail silently if you skip them: the agent must use the
+RemembersConversations trait and contract, and its tools must be returned
+through Clutch::policy([...]) or none of the approval, idempotency or loop
+guard machinery ever runs.
+
+Show me the diff, the worker command, and one curl that starts a run.
+```
+
+[More prompts](https://obaid.github.io/laravel-clutch/agents/) for moving an existing Laravel AI agent across, adding approval to a single tool, and building a progress UI, plus the mistakes worth checking for afterwards.
+
+Agents can read the whole thing at [llms.txt](https://obaid.github.io/laravel-clutch/llms.txt), or [llms-full.txt](https://obaid.github.io/laravel-clutch/llms-full.txt) for the guide and every recipe as one file.
 
 ## Requirements
 
@@ -1014,9 +1041,19 @@ Every screen is something that would go wrong in a naive build. Close the tab an
 
 Five of its seven tools never ask permission, which is the part worth copying. Approval is for the two things you cannot take back.
 
+## Used by
+
+- [ONE](https://osone.ai)
+- [Provision AI](https://provision.ai)
+- [CrewX](https://crewx.ai)
+
+Using it somewhere? Open a pull request and add yourself.
+
 ## Documentation
 
-Full docs at [obaid.github.io/laravel-clutch](https://obaid.github.io/laravel-clutch/), including [recipes](https://obaid.github.io/laravel-clutch/recipes/) for approval inboxes, live progress UIs, multi tenant scoping, and spend caps.
+Full docs at [obaid.github.io/laravel-clutch](https://obaid.github.io/laravel-clutch/), including [recipes](https://obaid.github.io/laravel-clutch/recipes/) for approval inboxes, live progress UIs, multi tenant scoping, and spend caps, and [setup prompts](https://obaid.github.io/laravel-clutch/agents/) to hand to a coding agent.
+
+For machines: [llms.txt](https://obaid.github.io/laravel-clutch/llms.txt) is a short index, [llms-full.txt](https://obaid.github.io/laravel-clutch/llms-full.txt) is everything in one file.
 
 ## License
 

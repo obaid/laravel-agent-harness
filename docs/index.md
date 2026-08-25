@@ -45,3 +45,9 @@ php artisan migrate
 ```
 
 Requires PHP 8.3 or newer, Laravel 12 or 13, and `laravel/ai` 0.11 or newer.
+
+## Or don't read any of this
+
+Paste a prompt into your coding agent and let it install and wire up the package for you. The [setup prompts](agents/) cover a fresh install, moving an agent you already have across, and adding approval to a single tool.
+
+Agents can read the package quickly from [llms.txt](llms.txt), or take the guide and every recipe in one file from [llms-full.txt](llms-full.txt).
