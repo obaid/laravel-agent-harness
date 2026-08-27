@@ -54,6 +54,11 @@ return [
         // concurrency driver, so `sync` in tests behaves predictably.
         'concurrent_steps' => env('CLUTCH_CONCURRENT_STEPS', true),
 
+        // How many concurrent steps resolve between journal writes. The state
+        // persists after every wave, so a hard-killed worker loses at most one
+        // wave of finished work rather than the whole group.
+        'step_wave_size' => env('CLUTCH_STEP_WAVE_SIZE', 8),
+
         // Discard a workflow's staged scratch once the session is destroyed.
         // Artifacts are recorded separately and are never touched by this.
         'discard_workspace' => env('CLUTCH_DISCARD_WORKFLOW_WORKSPACE', true),

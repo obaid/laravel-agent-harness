@@ -129,45 +129,60 @@ final class WorkflowRuntime
         if ($outstanding !== []) {
             $this->throwIfCancelled();
 
-            foreach (array_keys($outstanding) as $name) {
-                $this->events->emit(EventType::StepStarted, [
-                    'step' => $name,
-                    'workflow' => $this->state->workflow,
-                    'concurrent' => true,
-                ]);
-            }
+            // Resolved in waves, and the state is persisted after every wave.
+            // Persisting only once at the end made the whole group a single
+            // unit of loss: a worker killed outright mid-group — a timeout,
+            // an OOM kill — took every finished sibling's record with it,
+            // even though their side effects had landed, and the retry paid
+            // to run all of them again. A wave bounds that loss. Without
+            // concurrency the wave is a single step, which is per-step
+            // durability, the same promise step() makes.
+            $concurrent = (bool) config('clutch.workflows.concurrent_steps', true);
+            $waveSize = $concurrent
+                ? max(1, (int) config('clutch.workflows.step_wave_size', 8))
+                : 1;
 
             $failure = null;
 
-            foreach ($this->resolveConcurrently($outstanding) as $name => $outcome) {
-                if ($outcome instanceof Throwable) {
-                    // Keep the first failure, but let the siblings that
-                    // succeeded be recorded before it is raised.
-                    $failure ??= $outcome;
+            foreach (array_chunk($outstanding, $waveSize, preserve_keys: true) as $wave) {
+                foreach (array_keys($wave) as $name) {
+                    $this->events->emit(EventType::StepStarted, [
+                        'step' => $name,
+                        'workflow' => $this->state->workflow,
+                        'concurrent' => $concurrent,
+                    ]);
+                }
+
+                foreach ($this->resolveConcurrently($wave) as $name => $outcome) {
+                    if ($outcome instanceof Throwable) {
+                        // Keep the first failure, but let the siblings that
+                        // succeeded be recorded before it is raised.
+                        $failure ??= $outcome;
+
+                        $this->events->emit(EventType::StepCompleted, [
+                            'step' => $name,
+                            'workflow' => $this->state->workflow,
+                            'failed' => true,
+                            'concurrent' => $concurrent,
+                        ]);
+
+                        continue;
+                    }
+
+                    $this->state->recordStep($name, $outcome);
 
                     $this->events->emit(EventType::StepCompleted, [
                         'step' => $name,
                         'workflow' => $this->state->workflow,
-                        'failed' => true,
-                        'concurrent' => true,
+                        'replayed' => false,
+                        'concurrent' => $concurrent,
                     ]);
-
-                    continue;
                 }
 
-                $this->state->recordStep($name, $outcome);
-
-                $this->events->emit(EventType::StepCompleted, [
-                    'step' => $name,
-                    'workflow' => $this->state->workflow,
-                    'replayed' => false,
-                    'concurrent' => true,
-                ]);
+                // Persisted before the next wave — and before rethrowing — so
+                // a resume re-runs only the steps that are still missing.
+                ($this->persist)($this->state);
             }
-
-            // Persisted before rethrowing, so a resume re-runs only the steps
-            // that are still missing rather than the whole group.
-            ($this->persist)($this->state);
 
             if ($failure instanceof Throwable) {
                 throw $failure;
