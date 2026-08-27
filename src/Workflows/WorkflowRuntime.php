@@ -193,13 +193,22 @@ final class WorkflowRuntime
      */
     protected function resolveConcurrently(array $work): array
     {
+        // Not an arrow function on purpose: the wrapper and the closure it
+        // returns must not share a source line. ReflectionClosure locates a
+        // closure by file and line, and two closures on one line make it
+        // extract the outer one's source for the inner — the serialized task
+        // then arrives in the subprocess expecting the wrapper's arguments,
+        // and every fan-out dies with "too few arguments" and falls back to
+        // running sequentially.
         $captured = array_map(
-            static fn (Closure $task): Closure => static function () use ($task): mixed {
-                try {
-                    return $task();
-                } catch (Throwable $e) {
-                    return $e;
-                }
+            static function (Closure $task): Closure {
+                return static function () use ($task): mixed {
+                    try {
+                        return $task();
+                    } catch (Throwable $e) {
+                        return $e;
+                    }
+                };
             },
             $work,
         );
