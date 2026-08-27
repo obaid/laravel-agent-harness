@@ -87,3 +87,19 @@ it('falls back from a provider-qualified rate to a bare model name', function ()
 
     expect($estimator->estimate(new BudgetUsage(promptTokens: 1_000_000), 'openai', 'gpt-5'))->toBe(1.25);
 });
+
+it('prices a dated model snapshot at its base rate', function (): void {
+    $estimator = new \Clutch\Laravel\Budgets\CostEstimator([
+        'openai:gpt-5.1' => ['input' => 1.25, 'output' => 10.00],
+    ]);
+
+    $usage = new BudgetUsage(promptTokens: 1_000_000, completionTokens: 100_000);
+
+    // Providers answer `gpt-5.1` requests as `gpt-5.1-2025-11-13`. Pricing the
+    // response verbatim missed the configured rate, estimated $0.00, and let a
+    // maxCostUsd budget spend without ever triggering.
+    expect($estimator->estimate($usage, 'openai', 'gpt-5.1-2025-11-13'))->toBe(2.25)
+        ->and($estimator->hasRateFor('openai', 'gpt-5.1-2025-11-13'))->toBeTrue()
+        // A genuinely unknown model still refuses to guess.
+        ->and($estimator->estimate($usage, 'openai', 'gpt-9'))->toBe(0.0);
+});
