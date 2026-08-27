@@ -62,8 +62,19 @@ class CostEstimator
             return null;
         }
 
+        // Providers resolve a requested model to a dated snapshot and report
+        // that in the response — ask for `gpt-5.1`, get `gpt-5.1-2025-11-13`
+        // back. The driver prices what the response says, so without this
+        // fallback every dated response missed the configured rate and
+        // estimated $0.00, and a `maxCostUsd` budget over it never triggered.
+        // Found dogfooding against FWD, whose own ledger already stripped the
+        // suffix the same way.
+        $bare = preg_replace('/-\d{4}-\d{2}-\d{2}$/', '', $model);
+
         return $this->rates["{$provider}:{$model}"]
             ?? $this->rates[$model]
+            ?? $this->rates["{$provider}:{$bare}"]
+            ?? $this->rates[$bare]
             ?? null;
     }
 }
