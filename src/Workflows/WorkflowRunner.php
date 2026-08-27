@@ -181,6 +181,7 @@ final class WorkflowRunner
             'configuration' => array_filter([
                 'workflow' => $workflow,
                 'sandbox' => $workflow::sandboxProvider(),
+                'limits' => ($definition['limits'] ?? []) !== [] ? $definition['limits'] : null,
             ], static fn (mixed $value): bool => $value !== null),
             'metadata' => array_filter([
                 'workflow' => $workflow,

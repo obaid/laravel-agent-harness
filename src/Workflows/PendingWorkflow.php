@@ -36,6 +36,9 @@ final class PendingWorkflow
     /** @var array<string, mixed> */
     protected array $metadata = [];
 
+    /** @var array<string, int> */
+    protected array $limits = [];
+
     /**
      * @param  class-string<Workflow>  $workflow
      */
@@ -104,6 +107,34 @@ final class PendingWorkflow
     }
 
     /**
+     * Hand each turn back after this many executed steps.
+     *
+     * The run suspends at the boundary and a continuation re-enters with the
+     * finished steps cached, so the workflow advances one slice per queue job.
+     */
+    public function sliceAfterSteps(int $steps): self
+    {
+        $this->limits['max_steps_per_slice'] = max(1, $steps);
+
+        return $this;
+    }
+
+    /**
+     * Hand each turn back at the first step boundary past this wall-clock
+     * budget.
+     *
+     * Size it below the queue worker's timeout so a workflow longer than any
+     * single worker's lifetime parks itself deliberately and completes as a
+     * chain of sub-timeout jobs, instead of being killed mid-flight.
+     */
+    public function sliceAfterSeconds(int $seconds): self
+    {
+        $this->limits['max_seconds_per_slice'] = max(1, $seconds);
+
+        return $this;
+    }
+
+    /**
      * @param  array<string, mixed>  $metadata
      */
     public function metadata(array $metadata): self
@@ -149,6 +180,7 @@ final class PendingWorkflow
             'queue' => $this->queue,
             'timeout_seconds' => $this->timeout,
             'metadata' => $this->metadata,
+            'limits' => $this->limits,
         ];
     }
 }

@@ -13,6 +13,7 @@ use Clutch\Laravel\Models\Run;
 use Clutch\Laravel\Models\Session;
 use Clutch\Laravel\Runtime\CancellationSignal;
 use Clutch\Laravel\Runtime\ClutchResult;
+use Clutch\Laravel\ValueObjects\TurnLimits;
 use Illuminate\Support\Facades\Concurrency;
 use Throwable;
 
@@ -34,6 +35,15 @@ final class WorkflowRuntime
      * @param  Closure(WorkflowState): void  $persist  writes a checkpoint mid-run
      * @param  Closure(string, string, array<string, mixed>): ClutchResult  $prompt
      */
+    /** Steps executed in this slice — replays are free and do not count. */
+    protected int $executedThisSlice = 0;
+
+    /** When this slice started working, for the wall-clock limit. */
+    protected float $sliceStartedAt;
+
+    /** The last step that completed, named in the slice event. */
+    protected ?string $lastCompletedStep = null;
+
     public function __construct(
         public readonly Run $run,
         public readonly Session $session,
@@ -42,7 +52,32 @@ final class WorkflowRuntime
         protected CancellationSignal $cancellation,
         protected Closure $persist,
         protected Closure $prompt,
-    ) {}
+        protected TurnLimits $limits = new TurnLimits,
+    ) {
+        $this->sliceStartedAt = microtime(true);
+    }
+
+    /**
+     * Hand the turn back if this slice's budget is spent.
+     *
+     * Called before live work only — replayed steps cost nothing and must
+     * never trigger a slice, or a resumed workflow could suspend forever
+     * without progressing. A slice always completes at least one unit before
+     * it can end, so a budget tighter than a single step still moves the
+     * workflow forward one step per job.
+     */
+    protected function guardSlice(): void
+    {
+        if (! $this->limits->isBounded() || $this->executedThisSlice === 0) {
+            return;
+        }
+
+        $elapsed = microtime(true) - $this->sliceStartedAt;
+
+        if ($this->limits->reached($this->executedThisSlice, $elapsed)) {
+            throw new WorkflowSliced($this->lastCompletedStep, $this->executedThisSlice, $elapsed);
+        }
+    }
 
     // Steps --------------------------------------------------------------
 
@@ -67,6 +102,7 @@ final class WorkflowRuntime
         }
 
         $this->throwIfCancelled();
+        $this->guardSlice();
 
         $this->events->emit(EventType::StepStarted, [
             'step' => $name,
@@ -84,6 +120,8 @@ final class WorkflowRuntime
         $this->currentStep = $previous;
 
         $this->state->recordStep($name, $value);
+        $this->executedThisSlice++;
+        $this->lastCompletedStep = $name;
 
         // Persisted before the next step begins, so a crash between steps
         // never costs the one that just finished.
@@ -145,6 +183,8 @@ final class WorkflowRuntime
             $failure = null;
 
             foreach (array_chunk($outstanding, $waveSize, preserve_keys: true) as $wave) {
+                $this->guardSlice();
+
                 foreach (array_keys($wave) as $name) {
                     $this->events->emit(EventType::StepStarted, [
                         'step' => $name,
@@ -182,6 +222,9 @@ final class WorkflowRuntime
                 // Persisted before the next wave — and before rethrowing — so
                 // a resume re-runs only the steps that are still missing.
                 ($this->persist)($this->state);
+
+                $this->executedThisSlice += count($wave);
+                $this->lastCompletedStep = array_key_last($wave);
             }
 
             if ($failure instanceof Throwable) {

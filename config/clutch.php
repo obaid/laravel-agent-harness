@@ -312,9 +312,12 @@ return [
     | parks itself deliberately instead of being killed part-way through.
     |
     | Both are null by default, meaning a turn runs to completion. Only drivers
-    | declaring the "time_slicing" capability accept them; the bundled
-    | laravel-ai driver does not, because Laravel AI cannot resume a turn it
-    | abandoned mid-flight.
+    | declaring the "time_slicing" capability accept them. The workflow driver
+    | does: it hands the turn back at the first step boundary past the budget,
+    | the run suspends, and a continuation re-enters with the finished steps
+    | cached — so a workflow longer than any single worker's timeout completes
+    | as a chain of sub-timeout jobs. The bundled laravel-ai driver does not,
+    | because Laravel AI cannot resume a turn it abandoned mid-flight.
     |
     */
 

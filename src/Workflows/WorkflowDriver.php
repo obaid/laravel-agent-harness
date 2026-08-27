@@ -17,6 +17,7 @@ use Clutch\Laravel\Models\Run;
 use Clutch\Laravel\Runtime\CancellationSignal;
 use Clutch\Laravel\ValueObjects\DriverCapabilities;
 use Clutch\Laravel\ValueObjects\NormalizedFailure;
+use Clutch\Laravel\ValueObjects\TurnLimits;
 use InvalidArgumentException;
 use Throwable;
 
@@ -56,7 +57,10 @@ final class WorkflowDriver implements ClutchDriver
             sessionResume: true,
             inFlightContinuation: true,
             manualCompaction: false,
-            timeSlicing: false,
+            // Sliced between steps: the runtime hands the turn back at the
+            // first step boundary past the budget, the run suspends, and a
+            // continuation re-enters handle() with the finished steps cached.
+            timeSlicing: true,
         );
     }
 
@@ -88,7 +92,7 @@ final class WorkflowDriver implements ClutchDriver
         $state = WorkflowState::fromArray($session->state);
         $state->payload = (array) ($input->option('input')['payload'] ?? []);
 
-        return $this->execute($session, $state, $input->runId, $events, $cancellation);
+        return $this->execute($session, $state, $input->runId, $events, $cancellation, $input->limits);
     }
 
     public function continueTurn(
@@ -113,7 +117,7 @@ final class WorkflowDriver implements ClutchDriver
 
         $state->pause = null;
 
-        return $this->execute($session, $state, $continuation->runId, $events, $cancellation);
+        return $this->execute($session, $state, $continuation->runId, $events, $cancellation, $continuation->limits);
     }
 
     /**
@@ -125,6 +129,7 @@ final class WorkflowDriver implements ClutchDriver
         string $runId,
         DriverEventSink $events,
         CancellationSignal $cancellation,
+        TurnLimits $limits = new TurnLimits,
     ): TurnResult {
         /** @var class-string<Workflow> $class */
         $class = $state->workflow;
@@ -153,6 +158,7 @@ final class WorkflowDriver implements ClutchDriver
             prompt: fn (string $prompt, string $agentClass, array $options) => $this->agents->prompt(
                 $run, $state, $prompt, $agentClass, $options,
             ),
+            limits: $limits,
         );
 
         $workflow->bind($runtime);
@@ -183,6 +189,24 @@ final class WorkflowDriver implements ClutchDriver
                 )],
                 text: $paused->why,
                 session: $session->withState($state->toArray()),
+            );
+        } catch (WorkflowSliced $sliced) {
+            // Everything completed so far is already persisted at its own
+            // boundary; persisting once more records the state the next job
+            // starts from. Not a failure: the run parks as suspended and the
+            // coordinator queues the continuation itself.
+            $persist($state);
+
+            $events->emitRaw('workflow.sliced', [
+                'workflow' => $class,
+                'last_step' => $sliced->lastStep,
+                'steps_this_slice' => $sliced->executed,
+                'elapsed_seconds' => round($sliced->elapsedSeconds, 3),
+            ]);
+
+            return TurnResult::suspended(
+                $session->withState($state->toArray()),
+                text: $sliced->getMessage(),
             );
         } catch (AgentPaused $paused) {
             // The agent stopped, so the workflow stops with it, showing the
