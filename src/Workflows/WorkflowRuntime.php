@@ -213,9 +213,15 @@ final class WorkflowRuntime
             $resolved = Concurrency::run($captured);
 
             return $resolved;
-        } catch (Throwable) {
+        } catch (Throwable $e) {
             // A forked driver cannot always serialise what the closure closes
-            // over. Falling back keeps the workflow correct, just slower.
+            // over. Falling back keeps the workflow correct, just slower —
+            // slower enough to blow a queue worker's timeout on a wide
+            // fan-out, so the fallback is reported rather than swallowed:
+            // the fix is almost always a step closure that captured `$this`
+            // or a hydrated model instead of scalars.
+            report($e);
+
             return array_map(static fn (Closure $task): mixed => $task(), $captured);
         }
     }
