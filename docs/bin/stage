@@ -31,34 +31,79 @@ stage() {
 }
 
 # The README is the guide. Copying it in keeps one source of truth rather than
-# a second copy that drifts.
-stage ../README.md guide 'Guide' 1
+# a second copy that drifts. It is split at its h2 headings into child pages
+# under a Guide parent, which is what puts the guide's sections into the left
+# sidebar as a submenu instead of one endless page with an on-page contents
+# box. Anchors keep kramdown's ids, and every intra-document link is rewritten
+# to the page its target now lives on.
+python3 - <<'SPLIT'
+import re
+from pathlib import Path
 
-# Two fixes for the site copy: the docs links under the title are circular
-# once you are already on the site, and links written for GitHub readers point
-# at docs/ rather than at sibling pages.
-sed -i.bak \
-    -e '/^\[Documentation\](https:\/\/obaid.github.io/d' \
-    -e 's|](docs/RECIPES.md)|](/laravel-clutch/recipes/)|g' \
-    pages/guide.md && rm -f pages/guide.md.bak
+readme = Path('../README.md').read_text()
 
-# The guide is one long page, so give it an on-page contents list. Inserted
-# before the first h2 rather than written into the README, where GitHub already
-# renders its own outline.
-awk '
-    !done && /^## / {
-        print "<details open markdown=\"block\">"
-        print "<summary>On this page</summary>"
-        print ""
-        print "- TOC"
-        print "{:toc}"
-        print ""
-        print "</details>"
-        print ""
-        done = 1
-    }
-    { print }
-' pages/guide.md > pages/guide.tmp && mv pages/guide.tmp pages/guide.md
+# The docs link under the title is circular once you are on the site, and
+# links written for GitHub readers point at docs/ rather than sibling pages.
+readme = re.sub(r'^\[Documentation\]\(https://obaid\.github\.io.*\n', '', readme, flags=re.M)
+readme = readme.replace('](docs/RECIPES.md)', '](/laravel-clutch/recipes/)')
+
+def slugify(title: str) -> str:
+    # kramdown's auto_ids: lowercase, spaces to hyphens, drop punctuation.
+    slug = title.strip().lower()
+    slug = re.sub(r'[^a-z0-9 -]', '', slug)
+    slug = re.sub(r'\s+', '-', slug).strip('-')
+    return slug or 'section'
+
+lines = readme.split('\n')
+sections = []      # (title, [body lines])
+intro = []
+current = None
+
+for line in lines:
+    heading = re.match(r'^## (.+)$', line)
+    if heading:
+        current = (heading.group(1).strip(), [])
+        sections.append(current)
+        continue
+    (current[1] if current else intro).append(line)
+
+# Where every anchor lives now, for link rewriting. The h2's own anchor maps
+# to its page root; deeper headings keep their kramdown id on that page.
+anchor_page = {}
+for title, body in sections:
+    page = slugify(title)
+    anchor_page[page] = (page, '')
+    for line in body:
+        sub = re.match(r'^#{3,6} (.+)$', line)
+        if sub:
+            anchor_page[slugify(sub.group(1))] = (page, slugify(sub.group(1)))
+
+def rewrite_links(text: str) -> str:
+    def repl(match):
+        anchor = match.group(1)
+        if anchor not in anchor_page:
+            return match.group(0)
+        page, fragment = anchor_page[anchor]
+        target = f'/laravel-clutch/guide/{page}/'
+        return f']({target}#{fragment})' if fragment else f']({target})'
+    return re.sub(r'\]\(#([a-z0-9-]+)\)', repl, text)
+
+def write(path, front, body):
+    Path(path).write_text(front + '\n{% raw %}\n' + rewrite_links(body).strip() + '\n{% endraw %}\n')
+
+write('pages/guide.md',
+    '---\nlayout: default\ntitle: Guide\nnav_order: 1\nhas_children: true\nhas_toc: false\npermalink: /guide/\n---\n',
+    '\n'.join(intro))
+
+for order, (title, body) in enumerate(sections, start=1):
+    page = slugify(title)
+    safe_title = title.replace('"', '\\"')
+    write(f'pages/guide-{page}.md',
+        f'---\nlayout: default\ntitle: "{safe_title}"\nparent: Guide\nnav_order: {order}\npermalink: /guide/{page}/\n---\n',
+        '\n'.join(body))
+
+print(f'guide split into {len(sections)} sections')
+SPLIT
 
 stage RECIPES.md recipes 'Recipes' 2
 stage AGENT-SETUP.md agents 'Set it up with an agent' 3

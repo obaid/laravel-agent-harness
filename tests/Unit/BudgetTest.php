@@ -89,7 +89,7 @@ it('falls back from a provider-qualified rate to a bare model name', function ()
 });
 
 it('prices a dated model snapshot at its base rate', function (): void {
-    $estimator = new \Clutch\Laravel\Budgets\CostEstimator([
+    $estimator = new CostEstimator([
         'openai:gpt-5.1' => ['input' => 1.25, 'output' => 10.00],
     ]);
 
