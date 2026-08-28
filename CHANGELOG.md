@@ -5,6 +5,50 @@ Notable changes to `obaid/laravel-clutch`.
 This project follows [Semantic Versioning](https://semver.org). Before v1.0, a
 breaking change needs a changelog entry and an upgrade note.
 
+## v0.5.0 - 2026-08-27
+
+Workflows slice.
+
+The workflow driver now declares `time_slicing` and means it: the runtime
+tracks each slice's executed steps and wall-clock against the turn's limits
+and, at the first step or wave boundary past the budget, hands the turn back.
+The run suspends with everything finished already persisted, the coordinator
+queues the continuation itself, and the next job re-enters `handle()` with
+the finished steps cached. A workflow whose wall-clock exceeds any single
+worker's timeout completes as a chain of sub-timeout jobs instead of being
+SIGKILLed mid-flight — the failure a real 40-minute scan hit twice while this
+was being built.
+
+Two rules keep it safe: replayed steps never count toward a slice, so a
+resumed workflow cannot suspend without progressing; and a slice always
+completes at least one step, so a budget tighter than a single step still
+moves forward one step per job. `PendingWorkflow` gains the same
+`sliceAfterSteps()` / `sliceAfterSeconds()` knobs `SessionBuilder` has;
+`clutch.limits.*` applies to workflows exactly as it already did to agents.
+
+## v0.4.1 - 2026-08-27
+
+Fixes shaken out by running a real application on the harness.
+
+**Dated model snapshots priced at their base rate.** `gpt-4o-2024-08-06`-style
+ids matched no pricing key, so every run costed $0.00 and a `maxCostUsd`
+budget could never fire.
+
+**`steps()` concurrency actually runs concurrently.** The exception wrapper
+put two closures on one source line; `ReflectionClosure` locates a closure by
+file and line, serialized the wrong one, and every subprocess died with "too
+few arguments" — so the whole fan-out silently ran sequentially. Watched
+live: a four-minute fan-out became a forty-minute crawl that blew through its
+queue worker's timeout. The fallback also `report()`s its cause now instead
+of swallowing it.
+
+**`steps()` persists in waves.** State was persisted once after every sibling
+resolved, making the whole group one unit of loss: a worker killed outright
+mid-group erased every finished sibling's record even though their side
+effects had landed, and the retry paid to run all of them again. Waves
+(`clutch.workflows.step_wave_size`, default 8) bound the loss; without
+concurrency the wave is a single step.
+
 ## v0.4.0 - 2026-08-25
 
 Testing that goes after the kind of bug this package actually has.

@@ -617,10 +617,14 @@ $data = $this->steps([
 ]);
 ```
 
-These run together through Laravel's own concurrency driver, and each is
-persisted as it lands. If one fails, the resume re-runs only that one. Set
+These run together through Laravel's own concurrency driver, resolved in
+waves of `clutch.workflows.step_wave_size` (default 8), and the state is
+persisted after every wave — so a worker killed outright mid-group loses at
+most one wave of finished work, never the whole group. If one step fails, its
+siblings are kept and the resume re-runs only what is missing. Set
 `clutch.workflows.concurrent_steps` to `false` to run them in sequence, which
-is sometimes what you want in a test.
+is sometimes what you want in a test; sequential mode persists after every
+step.
 
 ### Pausing for a human
 
@@ -735,6 +739,26 @@ Clutch::agent(ResearchAgent::class)
 Each slice checkpoints, records a `run.suspended` event, and queues the
 continuation. Usage accumulates across slices, so a run cut into ten pieces
 still meets its budget as one run.
+
+Workflows slice too, and for them the boundary is a step. The runtime hands
+the turn back at the first step (or wave) past the budget, the run suspends
+with everything finished already persisted, and the continuation re-enters
+`handle()` with those steps cached — so a workflow whose wall-clock exceeds
+any single worker's timeout completes as a chain of sub-timeout jobs instead
+of being killed mid-flight:
+
+```php
+ProduceReport::start()
+    ->for($user)
+    ->sliceAfterSeconds(1500)   // below a 1800s worker timeout
+    ->dispatch(['report_id' => $id]);
+```
+
+Or set `clutch.limits.max_seconds_per_slice` once and every bounded driver
+inherits it. Two rules keep slicing safe: replayed steps never count toward a
+slice, so a resumed workflow cannot suspend without progressing; and a slice
+always completes at least one step, so a budget tighter than a single step
+still moves forward one step per job.
 
 Slicing needs a driver that can park a turn and pick it up again. The bundled
 `laravel-ai` driver cannot: Laravel AI runs a turn to completion, and abandoning
