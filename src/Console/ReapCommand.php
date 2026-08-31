@@ -19,7 +19,7 @@ class ReapCommand extends Command
     {
         $job = new ReapAbandonedRuns(
             staleAfterSeconds: (int) ($this->option('stale-after')
-                ?? config('clutch.recovery.stale_after_seconds', 300)),
+                ?? config('clutch.recovery.stale_after_seconds', 1200)),
             retry: ! $this->option('no-retry'),
         );
 

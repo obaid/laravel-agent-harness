@@ -635,6 +635,13 @@ process rather than failing it. Keep it under the queue worker's timeout; a
 step cannot usefully outlive the worker running it. `null` removes the limit,
 which is only right when something else bounds the work.
 
+While a wave is in flight the runtime beats `runs.heartbeat_at` at every step
+and wave boundary, so a long workflow is not mistaken for a dead one. The
+reaper's `clutch.recovery.stale_after_seconds` still has to clear the longest a
+healthy worker can go without speaking — one step — because a step blocks in a
+single process and cannot beat from inside itself. Keep it above
+`workflows.step_timeout`; the shipped defaults (1200 and 900) already are.
+
 A step that outruns the limit fails the run. It is deliberately not retried
 in-process: the work was already too slow to finish in a process of its own,
 so re-running the whole wave sequentially takes longer still — long enough to

@@ -382,7 +382,16 @@ return [
     */
 
     'recovery' => [
-        'stale_after_seconds' => 300,
+        // Must exceed the longest a healthy worker can legitimately go without
+        // speaking, which is one concurrent step: see
+        // `clutch.workflows.step_timeout` (900). The runtime beats
+        // `runs.heartbeat_at` at every step and wave boundary, but a single
+        // step blocks in one process and cannot beat from inside itself, so a
+        // threshold below the step timeout reaps workers that are still
+        // working — which is how a scan lost two runs and judged the same
+        // topics three times. Recovering a genuinely dead run slowly is the
+        // cheaper mistake.
+        'stale_after_seconds' => 1200,
         'retry_abandoned' => true,
     ],
 

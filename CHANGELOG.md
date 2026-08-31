@@ -5,6 +5,31 @@ Notable changes to `obaid/laravel-clutch`.
 This project follows [Semantic Versioning](https://semver.org). Before v1.0, a
 breaking change needs a changelog entry and an upgrade note.
 
+## v0.5.2 - 2026-08-31
+
+A working run stops being mistaken for a dead one.
+
+`runs.heartbeat_at` was written once, when a run transitioned to Running, and
+never again. The reaper reads a heartbeat older than
+`clutch.recovery.stale_after_seconds` as a worker that died, and its own comment
+says the lease is the liveness check — but nothing renews that either, and it
+expires after 60 seconds. So any workflow that spent longer than the threshold
+inside its own steps was reaped **while it was working**, marked `worker_lost`,
+and retried into exactly the same wall. Two runs of a real scan died five
+minutes in, to the second, judging the same topics three times between them.
+
+- The runtime now beats the heartbeat at every step and wave boundary, before
+  blocking as well as after. It is written through the query builder: a
+  liveness signal must not fire model events or touch `updated_at`.
+- `clutch.recovery.stale_after_seconds` defaults to 1200, up from 300. It has
+  to clear the longest a healthy worker can legitimately go without speaking,
+  which is one concurrent step — `clutch.workflows.step_timeout`, 900. A
+  threshold under that reaps workers mid-flight. Recovering a genuinely dead
+  run slowly is the cheaper mistake.
+
+Applications that lowered `stale_after_seconds` should check it still exceeds
+`workflows.step_timeout`.
+
 ## v0.5.1 - 2026-08-31
 
 Concurrent steps get a timeout worth the name.

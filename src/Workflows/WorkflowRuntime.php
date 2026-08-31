@@ -113,12 +113,17 @@ final class WorkflowRuntime
         $previous = $this->currentStep;
         $this->currentStep = $name;
 
+        // A single step can be as long as a wave, and nothing speaks until it
+        // returns.
+        $this->beat();
+
         // Deliberately not a `finally`: unwinding must leave the failing step
         // name in place, because that is the one thing the stack trace alone
         // will not tell you.
         $value = $work();
 
         $this->currentStep = $previous;
+        $this->beat();
 
         $this->state->recordStep($name, $value);
         $this->executedThisSlice++;
@@ -186,6 +191,11 @@ final class WorkflowRuntime
             foreach (array_chunk($outstanding, $waveSize, preserve_keys: true) as $wave) {
                 $this->guardSlice();
 
+                // Before blocking, not after: a wave of model-priced steps is
+                // minutes inside `Concurrency::run()`, and this is the last
+                // moment anything can be said until it returns.
+                $this->beat();
+
                 foreach (array_keys($wave) as $name) {
                     $this->events->emit(EventType::StepStarted, [
                         'step' => $name,
@@ -223,6 +233,8 @@ final class WorkflowRuntime
                 // Persisted before the next wave — and before rethrowing — so
                 // a resume re-runs only the steps that are still missing.
                 ($this->persist)($this->state);
+
+                $this->beat();
 
                 $this->executedThisSlice += count($wave);
                 $this->lastCompletedStep = array_key_last($wave);
@@ -303,6 +315,29 @@ final class WorkflowRuntime
             report($e);
 
             return array_map(static fn (Closure $task): mixed => $task(), $captured);
+        }
+    }
+
+    /**
+     * Say that this worker is still alive.
+     *
+     * `runs.heartbeat_at` is written once when the run starts and, until this,
+     * never again — while the reaper treats a heartbeat older than
+     * `clutch.recovery.stale_after_seconds` as a worker that died. A workflow
+     * that spends longer than that inside its own steps was therefore reaped
+     * *while working*, its opportunities half judged, and the retry did the
+     * same thing again. Every step and every wave boundary now says otherwise.
+     *
+     * Written through the query builder: this is a liveness signal, not a
+     * change to the run, and it must not fire model events, touch `updated_at`,
+     * or overwrite a column another process just set.
+     */
+    private function beat(): void
+    {
+        try {
+            Run::query()->whereKey($this->run->getKey())->update(['heartbeat_at' => now()]);
+        } catch (Throwable) {
+            // Never let saying "still here" be the thing that ends a run.
         }
     }
 

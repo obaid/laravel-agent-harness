@@ -32,7 +32,7 @@ class ReapAbandonedRuns implements ShouldQueue
     use SerializesModels;
 
     public function __construct(
-        public readonly int $staleAfterSeconds = 300,
+        public readonly int $staleAfterSeconds = 1200,
         public readonly bool $retry = true,
     ) {}
 

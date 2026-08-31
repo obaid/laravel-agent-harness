@@ -307,7 +307,7 @@ class ClutchServiceProvider extends ServiceProvider
             $config = $this->app['config'];
 
             $schedule->job(new ReapAbandonedRuns(
-                staleAfterSeconds: (int) $config->get('clutch.recovery.stale_after_seconds', 300),
+                staleAfterSeconds: (int) $config->get('clutch.recovery.stale_after_seconds', 1200),
                 retry: (bool) $config->get('clutch.recovery.retry_abandoned', true),
             ))->everyFiveMinutes()->name('agent-clutch:reap')->withoutOverlapping();
 
