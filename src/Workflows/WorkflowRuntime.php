@@ -14,6 +14,7 @@ use Clutch\Laravel\Models\Session;
 use Clutch\Laravel\Runtime\CancellationSignal;
 use Clutch\Laravel\Runtime\ClutchResult;
 use Clutch\Laravel\ValueObjects\TurnLimits;
+use Illuminate\Process\Exceptions\ProcessTimedOutException;
 use Illuminate\Support\Facades\Concurrency;
 use Throwable;
 
@@ -277,9 +278,21 @@ final class WorkflowRuntime
 
         try {
             /** @var array<string, mixed> $resolved */
-            $resolved = Concurrency::run($captured);
+            $resolved = Concurrency::run($captured, $this->stepTimeout());
 
             return $resolved;
+        } catch (ProcessTimedOutException $e) {
+            // A step outran its own limit. This is the one failure the
+            // sequential fallback below must not answer: the work was already
+            // too slow to finish in its own process, and re-running the whole
+            // wave in this one takes strictly longer — long enough to blow the
+            // worker's timeout and have it killed holding the run, which turns
+            // one slow step into a lost run and a retry that repeats it.
+            //
+            // Raised instead. The wave's finished siblings are already
+            // journalled, the run fails cleanly, and a retry re-runs only the
+            // steps still missing.
+            throw $e;
         } catch (Throwable $e) {
             // A forked driver cannot always serialise what the closure closes
             // over. Falling back keeps the workflow correct, just slower —
@@ -291,6 +304,24 @@ final class WorkflowRuntime
 
             return array_map(static fn (Closure $task): mixed => $task(), $captured);
         }
+    }
+
+    /**
+     * How long one concurrent step may run, in seconds.
+     *
+     * Null means no limit. Anything else is passed to the concurrency driver,
+     * which otherwise inherits Symfony's 60-second process default — a limit
+     * nobody chose and that no model-priced step can meet.
+     */
+    private function stepTimeout(): ?int
+    {
+        $timeout = config('clutch.workflows.step_timeout', 900);
+
+        if ($timeout === null || $timeout === '') {
+            return null;
+        }
+
+        return max(1, (int) $timeout);
     }
 
     // Pausing ------------------------------------------------------------

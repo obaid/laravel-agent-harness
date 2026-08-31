@@ -626,6 +626,22 @@ siblings are kept and the resume re-runs only what is missing. Set
 is sometimes what you want in a test; sequential mode persists after every
 step.
 
+Each step gets `clutch.workflows.step_timeout` seconds (default 900) in its
+own process. Size it against the work rather than the clock you hope for:
+Laravel's process driver applies no timeout of its own, so without this a step
+inherits Symfony's default of 60 seconds — long enough for a query, nowhere
+near enough for one that makes a handful of agent calls, and it kills the
+process rather than failing it. Keep it under the queue worker's timeout; a
+step cannot usefully outlive the worker running it. `null` removes the limit,
+which is only right when something else bounds the work.
+
+A step that outruns the limit fails the run. It is deliberately not retried
+in-process: the work was already too slow to finish in a process of its own,
+so re-running the whole wave sequentially takes longer still — long enough to
+blow the worker's timeout and have it killed still holding the run. Failing
+instead keeps the finished siblings journalled and lets a retry re-run only
+what is missing.
+
 ### Pausing for a human
 
 `pause()` stops the workflow, writes a checkpoint, and lets the worker exit.

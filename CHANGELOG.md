@@ -5,6 +5,33 @@ Notable changes to `obaid/laravel-clutch`.
 This project follows [Semantic Versioning](https://semver.org). Before v1.0, a
 breaking change needs a changelog entry and an upgrade note.
 
+## v0.5.1 - 2026-08-31
+
+Concurrent steps get a timeout worth the name.
+
+`steps()` handed its work to Laravel's concurrency driver without a timeout,
+which left Symfony's process default of 60 seconds — a number nobody chose and
+no model-priced step can meet. A fan-out of agent calls was killed silently
+mid-flight, and because the driver kills the process rather than failing it,
+the run died as `worker_lost` with nothing in `failed_jobs` to say why.
+
+Worse, the fallback answered it. The `catch` around `Concurrency::run()` exists
+for closures a forked driver cannot serialise, and it re-runs the wave in the
+current process. Answering a *timeout* that way runs work that was already too
+slow, sequentially, in the worker — which blew the worker's own timeout and had
+it SIGKILLed still holding the run. One slow step became a lost run, and the
+retry repeated it exactly.
+
+- New `clutch.workflows.step_timeout` (default 900 seconds, `null` to remove
+  the limit), passed through to the driver.
+- A `ProcessTimedOutException` is now raised rather than swallowed into the
+  sequential fallback. Finished siblings stay journalled and a retry re-runs
+  only what is missing. Serialisation failures still fall back as before.
+
+No configuration change is required: the new default is fifteen times the limit
+it replaces. Applications whose steps legitimately run longer should raise it,
+keeping it under the queue worker's timeout.
+
 ## v0.5.0 - 2026-08-27
 
 Workflows slice.

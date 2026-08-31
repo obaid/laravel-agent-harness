@@ -59,6 +59,16 @@ return [
         // wave of finished work rather than the whole group.
         'step_wave_size' => env('CLUTCH_STEP_WAVE_SIZE', 8),
 
+        // How long one concurrent step may run before its process is killed,
+        // in seconds. Laravel's process driver applies no timeout of its own,
+        // which leaves Symfony's default of 60 seconds — far below what a
+        // model-priced step costs. A step that makes ten agent calls is
+        // minutes of work, and 60 seconds kills it silently mid-flight, so
+        // this is sized against the queue worker's timeout instead: a step
+        // cannot usefully outlive the worker running it. Null removes the
+        // limit, which is only ever right if something else bounds the work.
+        'step_timeout' => env('CLUTCH_STEP_TIMEOUT', 900),
+
         // Discard a workflow's staged scratch once the session is destroyed.
         // Artifacts are recorded separately and are never touched by this.
         'discard_workspace' => env('CLUTCH_DISCARD_WORKFLOW_WORKSPACE', true),
